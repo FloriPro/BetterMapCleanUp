@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/placer/viewer/mystyle.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+        <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script src="/placer/Leaflet.ImageOverlay.Rotated.js"></script>
+
+    <script>
+        const registerServiceWorker = async () => {
+            if ("serviceWorker" in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register("/sw.js", {
+                        scope: "/",
+                    });
+                    if (registration.installing) {
+                        console.log("Service worker installing");
+                    } else if (registration.waiting) {
+                        console.log("Service worker installed");
+                    } else if (registration.active) {
+                        console.log("Service worker active");
+                    }
+                } catch (error) {
+                    console.error(`Registration failed with ${error}`);
+                }
+            }
+        };
+        registerServiceWorker();
+    </script>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div id="levelSelect">
+    </div>
+    <div id="searchWrapper">
+        <div id="searchInputWrapper">
+            <input id="search" class="close" placeholder="Suche" style="width: 32px;">
+            <div id="searchIcon">🔎</div>
+        </div>
+        <div id="searchOutput">
+
+        </div>
+    </div>
+    <button id="findMe">🔵</button>
+    <div id="currentSelectedInfoWrapper">
+        <div id="currentSelected" style="display: none;">
+            <p id="currentSelectedText"></p>
+            <div class="currentSelectedButtons">
+                <button class="currentSelectedButton" id="currentSelectedOpen">/\</button>
+                <button class="currentSelectedButton" id="currentSelectedClose">X</button>
+            </div>
+        </div>
+    </div>
+    <div id="loadingPageIndicatorWrapper">
+        <h3>Loading Images. Please wait...</h3>
+        <div id="loadingPageIndicator">
+            <div id="loadingPageIndicatorFinished" style="--progress:0%;"></div>
+        </div>
+    </div>
+    <script src="/placer/viewer/viewer.js">
+    </script>
+</body>
+
+</html>

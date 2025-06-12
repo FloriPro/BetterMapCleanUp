@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
+    <title>Tile-Server</title>
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+      }
+      #map {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+      }
+      #levelButtons {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        padding: 5px;
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      }
+      #levelButtons button {
+        display: block;
+        margin: 2px 0;
+        width: 80px;
+        cursor: pointer;
+      }
+      #levelButtons button.active {
+        background-color: #007bff;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="levelButtons"></div>
+    <div id="map"></div>
+    <script>
+      const levels = [
+        "OG 06",
+        "OG 05",
+        "OG 04",
+        "OG 03 Z",
+        "OG 03",
+        "OG 02 Z",
+        "OG 02",
+        "OG 01 Z",
+        "OG 01",
+        "EG Z",
+        "EG",
+        "UG 01",
+        "UG 02",
+        "UG 03",
+      ];
+
+      const map = L.map("map").setView(
+        [48.1508085341656, 11.580216165162133],
+        16
+      );
+
+      // Base map (optional)
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map);
+
+      // Create tile layers and buttons
+      const tileLayers = {};
+      const buttonContainer = document.getElementById("levelButtons");
+
+      levels.forEach((level, index) => {
+        tileLayers[level] = L.tileLayer(`/tiles/${level}/{z}/{x}/{y}.png`, {
+          minZoom: 12,
+          maxZoom: 21,
+        });
+
+        const btn = document.createElement("button");
+        btn.innerText = level;
+        btn.onclick = () => switchLevel(level, btn);
+        buttonContainer.appendChild(btn);
+      });
+
+      let currentLayer = tileLayers[levels[0]];
+      currentLayer.addTo(map);
+
+      function switchLevel(level, clickedButton) {
+        if (tileLayers[level] && tileLayers[level] !== currentLayer) {
+          map.removeLayer(currentLayer);
+          currentLayer = tileLayers[level];
+          currentLayer.addTo(map);
+
+          // Update button styles
+          document.querySelectorAll("#levelButtons button").forEach((btn) => {
+            btn.classList.remove("active");
+          });
+          clickedButton.classList.add("active");
+        }
+      }
+
+      // Trigger active state for initial layer
+      document
+        .querySelectorAll("#levelButtons button")[0]
+        .classList.add("active");
+    </script>
+  </body>
+</html>
