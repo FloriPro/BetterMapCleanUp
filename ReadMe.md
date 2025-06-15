@@ -1,6 +1,6 @@
 # Steps to generate TileMaps
 
-1. open https://www.lmu.de/raumfinder/#/ and get the neccesary data: with
+1. open https://www.lmu.de/raumfinder/#/ and get the neccesary data with the following code in the debug console:
 
 ```javascript
 console.log(JSON.stringify(buildingsLookup)); // -> data_buildingsLookup.json
@@ -52,4 +52,43 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
 1. Start the edit server with `python editServer.py`
 2. Open http://localhost:3015 in your browser and select `router` (http://localhost:3015/router).
 
-3. ### TODO
+## Design
+
+- The routing is made out of _points_, which are connected by _lines_. Lines only store the id of the start and end point.
+- Points _need_ to contain
+  - `x`, `y` as well as corresponding `lat`, `lng` positions.
+- Points _may_ contain
+
+  - `tags` to identify special information about the point
+    point. (`{"tags": {"<tag>": "<value>"}}`)
+    - `roomId: boolean` to link the point to a room in the building.
+    - `private: boolean` to mark the point as private or private.
+  - A point can also include a `levelChange` property. This allows you to define stairs, elevators, or other transitions between floors.point. (`{"levelChange": [{levelId:"<level>", pointId: "<id>", "direction": "[up/down]"}]}`)
+    - there is also a `levelChangeTodo: boolean` property that can be used to mark points that need to be defined later.
+
+- Lines _may_ contain
+  - `tags` to identify special information about the line.
+    - `{"tags": {"<tag>": "<value>"}}`
+      - `accessible: boolean` for wheelchair accessible routes
+      - `locked: boolean` if the line goes through a locked door
+      - `type: "<type>"` to define the type of the line, e.g. "corridor", "staircase", "elevator", etc.
+
+## UI Symbols
+
+- locksymbol on point: private room
+- dashed line: a line that is not accessible, e.g. a locked door or a wall.
+- pink line: line is not accessible for wheelchair users.
+- arrow in both directions: the line is a level change point, e.g. a staircase or an elevator.
+
+## keyboard shortcuts
+
+- _Space_ or use any other mouse Button: To enable dragging the map while on the canvas
+- _Mouse Drag_: While dragging on the canvas with the mouse, a line will be added to represent a route segment.
+- _Shift + Mouse Drag_: If the cursor is near an existing point, it will move that point to the cursor position.
+- _Ctrl + Mouse Drag_: If the cursor is near an existing _point_, it will remove that point. And all lines connected to it.<br> If it is near a _line_, it will remove that line.
+- _m_: Mark the _point_ as a level change point. This will be used later to define stairs, when the other levels are added.
+- _p_: Toggel the private state of the _Point_.
+- _t_: Edit the tags of the _Point_.
+- **ToDo** _e_: Add room id to the _Point_.
+- _a_: Toggel the accessibility of the _Line_.
+- _l_: Toggel the locked state of the _Line_.

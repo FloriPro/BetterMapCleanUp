@@ -82,6 +82,8 @@ def exists(path):
 def save(path):
     if ".." in path or "%" in path or "?" in path or " " in path:
         return "Invalid path", 400
+    # create the directory if it does not exist
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     # save the jsonData
     with open(f"{path}", "w") as f:
         f.write(flask.request.data.decode("utf-8"))
