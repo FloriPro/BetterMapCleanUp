@@ -179,7 +179,7 @@ class _oldGetter {
     }
 
     async getRooms(buildingid, part) {
-        let partRoomsUrl = `/data/${buildingid}/rooms_${part}.json`;
+        let partRoomsUrl = `/data/${buildingid}/rooms/${part}.json`;
         return await (await fetch(partRoomsUrl)).json()
     }
 
@@ -517,8 +517,6 @@ async function addBuildingPart(building, part, buildingparts, thisBuildingLayers
         imageUrl = `/data/${building.code}/${viewtype}_${part}.svg`;
     } else if (useForHQ == "pdfsvg") {
         imageUrl = `/data/${building.code}/${part}.pdf.svg`;
-    } else if (useForHQ == "pdfpng") {
-        imageUrl = `/data/${building.code}/crop_clear_${part}.pdf.png`;
     }
     let imageUrlMidHQ = `/data/${building.code}/midhiquality_${viewtype}_${part}.png`
     let downscaleImageUrl = `/data/${building.code}/downscale_${viewtype}_${part}.png`
@@ -553,7 +551,7 @@ async function addBuildingPart(building, part, buildingparts, thisBuildingLayers
     partData.imgPos = partData.img;
     partData.imgSize = partData.size;
     if (viewtype == "clear") {
-        //partData.imgrotation += await (await fetch(`/data/${building.code}/rotation_${part}.json`)).json()
+        //partData.imgrotation += await (await fetch(`/data/${building.code}/rotation/${part}.json`)).json()
         partData.imgrotation += await getter.getImgRotation(building.code, part);
         let oimg = partData.img;
         partData.imgPos = partData.unrotateimg

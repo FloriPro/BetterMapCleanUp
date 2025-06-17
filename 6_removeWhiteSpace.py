@@ -72,16 +72,21 @@ HaltAfterOne = False
 
 def make(buildingid, building):
     hasDoneStuff = False
-    buildingParts = getUniqueBuildingParts(buildingid)
+    buildingParts = getUniqueBuildingParts(buildingid=buildingid)
+    if not os.path.exists(f"data/{buildingid}/clear/"):
+        os.makedirs(f"data/{buildingid}/clear/")
+
     for part, value in buildingParts.items():
         if hasDoneStuff and HaltAfterOne:
             print(f"[buildingid]: {buildingid}, [part]: {part}")
             exit()
-        if os.path.exists(f"data/{buildingid}/clear_{part}.png") == True:
+        if os.path.exists(f"data/{buildingid}/clear/{part}.png") == True:
             continue
+
+
         hasDoneStuff = True
         print(f"[buildingid]: {buildingid}, [part]: {part}")
-        img = Image.open(f"data/{buildingid}/crop_{part}.png")
+        img = Image.open(f"data/{buildingid}/crop/{part}.png")
         # make img rgba
         img = img.convert("RGBA")
         # remove white colors
@@ -127,10 +132,10 @@ def make(buildingid, building):
         img.putalpha(imgMask)
         print("Finished")
         try:
-            img.save(f"data/{buildingid}/clear_{part}.png")
+            img.save(f"data/{buildingid}/clear/{part}.png")
         except KeyboardInterrupt:
             print("please wait...")
-            img.save(f"data/{buildingid}/clear_{part}.png")
+            img.save(f"data/{buildingid}/clear/{part}.png")
             exit()
 
 

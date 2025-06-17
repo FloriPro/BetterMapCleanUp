@@ -419,8 +419,8 @@ def planTiler(minZoom, maxZoom):
         for partid, part in building["parts"].items():
             poly = part["polyInfo"]["poly"]
             mapThisImg = MapImage(
-                image_path_hq=f"../data/{buildingId}/clear_{partid}.png",
-                image_path_lq=f"../data/{buildingId}/downscale_clear_{partid}.png",
+                image_path_hq=f"../data/{buildingId}/clear/{partid}.png",
+                image_path_lq=f"../data/{buildingId}/downscale_clear/{partid}.png",
                 cornerTopLeft=LatLng(poly["topLeft"]["lat"], poly["topLeft"]["lng"]),
                 cornerTopRight=LatLng(poly["topRight"]["lat"], poly["topRight"]["lng"]),
                 cornerBottomLeft=LatLng(
@@ -456,7 +456,7 @@ def planTiler(minZoom, maxZoom):
             print("using default level EG for building", eg["level"], buildingId)
 
             egImg = PILImage.open(
-                f"../data/{buildingId}/clear_{egpartid}.png"
+                f"../data/{buildingId}/clear/{egpartid}.png"
             ).convert("RGBA")
             # make everything that is not transparent white
             img_array = numpy.array(egImg)

@@ -18,12 +18,12 @@ def getUniqueBuildingParts(buildingid):
 
 
 def getRooms(buildingid, partid):
-    with open(f"data/{buildingid}/rooms_{partid}.json", encoding="UTF-8") as f:
+    with open(f"data/{buildingid}/rooms/{partid}.json", encoding="UTF-8") as f:
         return json.load(f)
 
 
 def getCropInfo(buildingid, part):
-    with open(f"data/{buildingid}/cropInfo_{part}.json", encoding="UTF-8") as f:
+    with open(f"data/{buildingid}/crop/{part}_info.json", encoding="UTF-8") as f:
         return json.load(f)
 
 
@@ -33,8 +33,8 @@ def checkRooms(buildingid, i, m):
     for part in uniqueBuildingParts:
         rooms = getRooms(buildingid, part)
         cropInfo = getCropInfo(buildingid, part)
-        i = Image.open(f"data/{buildingid}/rotate_{part}.png")
-        iog = Image.open(f"data/{buildingid}/crop_{part}.png")
+        i = Image.open(f"data/{buildingid}/rotation/{part}.png")
+        iog = Image.open(f"data/{buildingid}/crop/{part}.png")
         draw = ImageDraw.Draw(i)
         drawog = ImageDraw.Draw(iog)
         so = 10
@@ -57,7 +57,7 @@ def checkRooms(buildingid, i, m):
         # clear pygame screen
         screen.fill((0, 0, 0))
 
-        # ogimg = pygame.image.load(f"data/{buildingid}/clear_{part}.png")
+        # ogimg = pygame.image.load(f"data/{buildingid}/clear/{part}.png")
         ogimg = pygame.image.fromstring(iog.tobytes(), iog.size, iog.mode)
         pgimg = pygame.image.fromstring(i.tobytes(), i.size, i.mode)
         # scale to fit 800, 800

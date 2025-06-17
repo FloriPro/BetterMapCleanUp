@@ -7,6 +7,7 @@ from PIL import ImageChops
 
 # rotate all images to north, with user input
 
+
 def are_images_equal(img1, img2):
     equal_size = img1.height == img2.height and img1.width == img2.width
 
@@ -53,11 +54,15 @@ def make(buildingid):
     lastCorners = None
     lastRotation = None
     selectedCorner = None
+    if not os.path.exists(f"data/{buildingid}/rotation/"):
+        os.makedirs(f"data/{buildingid}/rotation/")
     for part, value in buildingParts.items():
         print(f"[buildingid]: {buildingid}, [part]: {part}")
-        img = Image.open(f"data/{buildingid}/clear_{part}.png")
+        img = Image.open(f"data/{buildingid}/clear/{part}.png")
 
-        if os.path.exists(f"data/{buildingid}/rotation_{part}.json"):
+        if os.path.exists(f"data/{buildingid}/rotation/{part}.json") and os.path.exists(
+            f"data/{buildingid}/rotation/{part}.png"
+        ):
             continue
 
         currCorners = [
@@ -82,6 +87,9 @@ def make(buildingid):
             currCorners[selectedCorner], lastCorners[selectedCorner]
         ):
             rotation = lastRotation
+        elif os.path.exists(f"data/{buildingid}/rotation/{part}.json"):
+            with open(f"data/{buildingid}/rotation/{part}.json", "r") as f:
+                rotation = json.load(f)
         else:
             # get corners of img
             imgCorners = [
@@ -181,13 +189,22 @@ def make(buildingid):
         screen.blit(text3, (10, 90))
         pygame.display.flip()
 
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
         print(rotation, selectedCorner)
         with open(
-            f"data/{buildingid}/rotation_{part}.json", "w", encoding="UTF-8"
+            f"data/{buildingid}/rotation/{part}.json", "w", encoding="UTF-8"
         ) as f:
             json.dump(rotation, f)
-        imgrotate = img.rotate(rotation, expand=True, fillcolor=(255, 255, 255,0))
-        imgrotate.save(f"data/{buildingid}/rotate_{part}.png")
+        imgrotate = img.rotate(rotation, expand=True, fillcolor=(255, 255, 255, 0))
+        try:
+            imgrotate.save(f"data/{buildingid}/rotation/{part}.png")
+        except KeyboardInterrupt:
+            print("please wait...")
+            imgrotate.save(f"data/{buildingid}/rotation/{part}.png")
 
 
 bj = getbuildingsJSON()

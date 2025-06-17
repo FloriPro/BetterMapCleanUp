@@ -36,22 +36,25 @@ def getRooms(buildingid):
 
 
 def getCropInfo(buildingid, part):
-    with open(f"data/{buildingid}/cropInfo_{part}.json", encoding="UTF-8") as f:
+    with open(f"data/{buildingid}/crop/{part}_info.json", encoding="UTF-8") as f:
         return json.load(f)
 
 
 def getRotateAngle(buildingid, part):
-    with open(f"data/{buildingid}/rotation_{part}.json", encoding="UTF-8") as f:
+    with open(f"data/{buildingid}/rotation/{part}.json", encoding="UTF-8") as f:
         return json.load(f)
 
 
 def calculateExpand(angle, w, h, buildingid, part):
     angle = math.radians(angle)
-    ir = Image.open(f"data/{buildingid}/rotate_{part}.png")
+    ir = Image.open(f"data/{buildingid}/rotation/{part}.png")
     return (ir.size[0] - w) / 2, (ir.size[1] - h) / 2
 
 
 def addRooms(buildingid, i, m):
+    if not os.path.exists(f"data/{buildingid}/rooms/"):
+        os.makedirs(f"data/{buildingid}/rooms/")
+
     print(f"{i}/{m} {buildingid}")
     uniqueBuildingParts = getUniqueBuildingParts(buildingid)
     buildingRoomsUnorderd = getRooms(buildingid)
@@ -61,6 +64,7 @@ def addRooms(buildingid, i, m):
             buildingRooms[data["floorCode"]] = []
         data["roomid"] = roomid
         buildingRooms[data["floorCode"]].append(data)
+
     for part in uniqueBuildingParts:
         partRooms = buildingRooms[part]
         cropInfo = getCropInfo(buildingid, part)
@@ -92,13 +96,13 @@ def addRooms(buildingid, i, m):
             rooms.append(room)
         try:
             with open(
-                f"data/{buildingid}/rooms_{part}.json", "w", encoding="UTF-8"
+                f"data/{buildingid}/rooms/{part}.json", "w", encoding="UTF-8"
             ) as f:
                 json.dump(rooms, f)
         except KeyboardInterrupt:
             print("plase wait...")
             with open(
-                f"data/{buildingid}/rooms_{part}.json", "w", encoding="UTF-8"
+                f"data/{buildingid}/rooms/{part}.json", "w", encoding="UTF-8"
             ) as f:
                 json.dump(rooms, f)
 

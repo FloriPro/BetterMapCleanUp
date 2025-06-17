@@ -24,7 +24,7 @@ for building in buildings:
     }
 
     for part in buildingPart.keys():
-        with open(f"data/{building['code']}/rooms_{part}.json", encoding="UTF-8") as f:
+        with open(f"data/{building['code']}/rooms/{part}.json", encoding="UTF-8") as f:
             rooms = json.load(f)
 
         with open(
@@ -32,9 +32,9 @@ for building in buildings:
         ) as f:
             mapInfo = json.load(f)
 
-        # `/data/${building.code}/rotation_${part}.json`
+        # `/data/${building.code}/rotation/${part}.json`
         with open(
-            f"data/{building['code']}/rotation_{part}.json", encoding="UTF-8"
+            f"data/{building['code']}/rotation/{part}.json", encoding="UTF-8"
         ) as f:  # rotation data is not used yet
             rotation = json.load(f)
         with open(
@@ -42,7 +42,7 @@ for building in buildings:
         ) as f:  # rotation data is not used yet
             polyInfo = json.load(f)
         with open(
-            f"data/{building['code']}/rooms_latlng_{part}.json", encoding="UTF-8"
+            f"data/{building['code']}/rooms/latlng/{part}.json", encoding="UTF-8"
         ) as f:  # rotation data is not used yet
             latlngRooms = json.load(f)["rooms"]
 

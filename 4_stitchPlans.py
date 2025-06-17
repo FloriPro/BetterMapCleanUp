@@ -20,8 +20,12 @@ def getUniqueBuildingParts(buildingid):
 def stitch(buildingid):
     buildingParts = getUniqueBuildingParts(buildingid)
 
+    # make folder img_default if not exists
+    if not os.path.exists(f"data/{buildingid}/img_default"):
+        os.makedirs(f"data/{buildingid}/img_default")
+
     for part, value in buildingParts.items():
-        if os.path.exists(f"data/{buildingid}/{part}.png"):
+        if os.path.exists(f"data/{buildingid}/img_default/{part}.png"):
             continue
         xlen = math.ceil(int(value["mapSizeX"]) / 256)
         ylen = math.ceil(int(value["mapSizeY"]) / 256)
@@ -47,10 +51,10 @@ def stitch(buildingid):
             x_offset += img.size[0]
 
         try:
-            new_img.save(f"data/{buildingid}/{part}.png")
+            new_img.save(f"data/{buildingid}/img_default/{part}.png")
         except KeyboardInterrupt:
-            print(f"plase wait otherwise the image will be corrupted (data/{buildingid}/{part}.png)")
-            new_img.save(f"data/{buildingid}/{part}.png")
+            print(f"plase wait otherwise the image will be corrupted (data/{buildingid}/img_default/{part}.png)")
+            new_img.save(f"data/{buildingid}/img_default/{part}.png")
             exit()
         print(f"Done {buildingid} {part}")
 

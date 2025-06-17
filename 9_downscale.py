@@ -44,15 +44,21 @@ def downscale(buildingid, building, adding, viewtype, scale):
         if os.path.exists(f"data/{buildingid}/{adding}_{part}.png") == True:
             continue
         print(f"[buildingid]: {buildingid}, [part]: {part}, [viewtype]: {viewtype}")
-        img = Image.open(f"data/{buildingid}/{viewtype}_{part}.png")
+        img = Image.open(f"data/{buildingid}/{viewtype}/{part}.png")
         img = img.resize((img.size[0] // scale, img.size[1] // scale))
-        img.save(f"data/{buildingid}/{adding}_{part}.png")
+        img.save(f"data/{buildingid}/{adding.replace('<part>', part)}")
 
 
 bj = getbuildingsJSON()
 for i, x in enumerate(bj):
     print(f"[{x['code']}]: {i}/{len(bj)}")
     for viewtype in ["rotate", "clear"]:
-        downscale(x["code"], x, f"midhiquality_{viewtype}", viewtype, 2)
-        downscale(x["code"], x, f"downscale_{viewtype}", viewtype, 8)
-        downscale(x["code"], x, f"maxdownscale_{viewtype}", viewtype, 40)
+        downscale(
+            x["code"], x, f"downscale/{viewtype}/<part>_midhiquality.png", viewtype, 2
+        )
+        downscale(
+            x["code"], x, f"downscale/{viewtype}/<part>_downscale.png", viewtype, 8
+        )
+        downscale(
+            x["code"], x, f"downscale/{viewtype}/<part>_maxdownscale.png", viewtype, 40
+        )

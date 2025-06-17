@@ -20,13 +20,16 @@ def getUniqueBuildingParts(buildingid):
 def crop(buildingid):
     buildingParts = getUniqueBuildingParts(buildingid)
 
+    if not os.path.exists(f"data/{buildingid}/crop"):
+        os.makedirs(f"data/{buildingid}/crop")
+
     for part, value in buildingParts.items():
-        if os.path.exists(f"data/{buildingid}/crop_{part}.png") and os.path.exists(
-            f"data/{buildingid}/cropInfo_{part}.json"
+        if os.path.exists(f"data/{buildingid}/crop/{part}.png") and os.path.exists(
+            f"data/{buildingid}/crop/{part}_info.json"
         ):
             continue
 
-        img = Image.open(f"data/{buildingid}/{part}.png")
+        img = Image.open(f"data/{buildingid}/img_default/{part}.png")
 
         # left
         leftCut = 0
@@ -96,9 +99,9 @@ def crop(buildingid):
             "oldHeight": img.size[1],
         }
         try:
-            newImg.save(f"data/{buildingid}/crop_{part}.png")
+            newImg.save(f"data/{buildingid}/crop/{part}.png")
             with open(
-                f"data/{buildingid}/cropInfo_{part}.json", "w", encoding="UTF-8"
+                f"data/{buildingid}/crop/{part}_info.json", "w", encoding="UTF-8"
             ) as f:
                 json.dump(
                     data,
@@ -106,9 +109,9 @@ def crop(buildingid):
                 )
         except KeyboardInterrupt:
             print("plase wait...")
-            newImg.save(f"data/{buildingid}/crop_{part}.png")
+            newImg.save(f"data/{buildingid}/crop/{part}.png")
             with open(
-                f"data/{buildingid}/cropInfo_{part}.json", "w", encoding="UTF-8"
+                f"data/{buildingid}/crop/{part}_info.json", "w", encoding="UTF-8"
             ) as f:
                 json.dump(
                     data,

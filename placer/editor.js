@@ -47,7 +47,7 @@ async function make(building, buildingparts) {
         }
         let imgrotation = 0
         if (viewtype == "clear") {
-            imgrotation += await (await fetch(`/data/${building.code}/rotation_${part}.json`)).json()
+            imgrotation += await (await fetch(`/data/${building.code}/rotation/${part}.json`)).json()
         }
         await new Promise((resolve) => {
             //map.setView([building.lat, building.lng], map.getZoom());

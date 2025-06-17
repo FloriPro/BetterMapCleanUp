@@ -29,6 +29,24 @@
 </head>
 
 <body>
+      <div class="help-menu">
+    <h2>Help Menu</h2>
+    <ul>
+      <li><span class="key">Space</span> or any mouse button: Enable dragging the map while on the canvas.</li>
+      <li><span class="key">Mouse Drag</span>: Add a line to represent a route segment.</li>
+      <li><span class="key">Shift + Mouse Drag</span>: Move an existing <em>point</em> if the cursor is near it.</li>
+      <li><span class="key">Ctrl + Mouse Drag</span>: 
+        - Remove a <em>point</em> (and connected lines) if near one.<br>
+        - Remove a <em>line</em> if near one.
+      </li>
+      <li><span class="key">m</span>: Mark the <em>point</em> as a level change point (for stairs, later).</li>
+      <li><span class="key">p</span>: Toggle the private state of the <em>point</em>.</li>
+      <li><span class="key">t</span>: Edit the tags of the <em>point</em>.</li>
+      <li><span class="key">e</span>: Add a room ID to the <em>point</em>.</li>
+      <li><span class="key">a</span>: Toggle the accessibility of the <em>line</em>.</li>
+      <li><span class="key">l</span>: Toggle the locked state of the <em>line</em>.</li>
+    </ul>
+  </div>
     <div id="map"></div>
     <script src="/placer/editor.js">
     </script>

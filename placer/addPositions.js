@@ -173,7 +173,7 @@ async function addBuildingPart(building, part, buildingparts) {
     partData.imgPos = partData.img;
     partData.imgSize = partData.size;
     if (viewtype == "clear") {
-        //partData.imgrotation += await (await fetch(`/data/${building.code}/rotation_${part}.json`)).json()
+        //partData.imgrotation += await (await fetch(`/data/${building.code}/rotation/${part}.json`)).json()
         partData.imgrotation += await getter.getImgRotation(building.code, part);
         let oimg = partData.img;
         partData.imgPos = partData.unrotateimg
@@ -218,7 +218,7 @@ async function addBuildingPart(building, part, buildingparts) {
         let latlng = mapPointToImage(partData.img, partData.size, center, partData.rotation, [npX, npY]);
         roomsData[room.rName].latlng = latlng;
     }
-    await fetch(`/save/data/${building.code}/rooms_latlng_${part}.json`, {
+    await fetch(`/save/data/${building.code}/rooms/latlng/${part}.json`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'

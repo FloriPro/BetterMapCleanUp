@@ -2,6 +2,7 @@ data_buildingsJSON.json
 data_buildingsLookup.json
 data_rename.json
 data/
+dataSave/
 
 mapTiling/tiles/
 mapTiling/config.yml
