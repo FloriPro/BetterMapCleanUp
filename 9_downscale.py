@@ -51,8 +51,13 @@ def downscale(buildingid, building, adding, viewtype, scale):
 
 bj = getbuildingsJSON()
 for i, x in enumerate(bj):
+    if not os.path.exists(f"data/{x['code']}/downscale"):
+        os.makedirs(f"data/{x['code']}/downscale", exist_ok=True)
+        
     print(f"[{x['code']}]: {i}/{len(bj)}")
-    for viewtype in ["rotate", "clear"]:
+    for viewtype in ["rotation", "clear"]:
+        if not os.path.exists(f"data/{x['code']}/downscale/{viewtype}"):
+            os.makedirs(f"data/{x['code']}/downscale/{viewtype}", exist_ok=True)
         downscale(
             x["code"], x, f"downscale/{viewtype}/<part>_midhiquality.png", viewtype, 2
         )

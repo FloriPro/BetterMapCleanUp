@@ -420,7 +420,7 @@ def planTiler(minZoom, maxZoom):
             poly = part["polyInfo"]["poly"]
             mapThisImg = MapImage(
                 image_path_hq=f"../data/{buildingId}/clear/{partid}.png",
-                image_path_lq=f"../data/{buildingId}/downscale_clear/{partid}.png",
+                image_path_lq=f"../data/{buildingId}/downscale/clear/{partid}_downscale.png",
                 cornerTopLeft=LatLng(poly["topLeft"]["lat"], poly["topLeft"]["lng"]),
                 cornerTopRight=LatLng(poly["topRight"]["lat"], poly["topRight"]["lng"]),
                 cornerBottomLeft=LatLng(

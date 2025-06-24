@@ -165,7 +165,7 @@ function mapPointToImage(img, currentSize, center, roatation, pixelxy) {
 
 async function addBuildingPart(building, part, buildingparts) {
     let imageUrl = `/data/${building.code}/${viewtype}_${part}.png`;
-    let useImageUrl = `/data/${building.code}/maxdownscale_${viewtype}_${part}.png`
+    let useImageUrl = `/data/${building.code}/downscale/${viewtype}/${part}_maxdownscale.png`
     let partData = await getter.getPartData(building.code, part)
     let center = new L.LatLng(partData.center.lat, partData.center.lng)
 
@@ -174,7 +174,7 @@ async function addBuildingPart(building, part, buildingparts) {
     partData.imgSize = partData.size;
     if (viewtype == "clear") {
         //partData.imgrotation += await (await fetch(`/data/${building.code}/rotation/${part}.json`)).json()
-        partData.imgrotation += await getter.getImgRotation(building.code, part);
+        partData.imgrotation -= await getter.getImgRotation(building.code, part);
         let oimg = partData.img;
         partData.imgPos = partData.unrotateimg
 
@@ -192,7 +192,7 @@ async function addBuildingPart(building, part, buildingparts) {
     })
     img.addTo(map);
 
-    await fetch(`/save/data/${building.code}/polyInfo_${part}.json`,
+    await fetch(`/save/data/${building.code}/polyInfo/${part}.json`,
         {
             method: "POST",
             headers: {

@@ -28,7 +28,7 @@ for building in buildings:
             rooms = json.load(f)
 
         with open(
-            f"data/{building['code']}/mapInfo_{part}.json", encoding="UTF-8"
+            f"data/{building['code']}/polyInfo/{part}_mapInfo.json", encoding="UTF-8"
         ) as f:
             mapInfo = json.load(f)
 
@@ -38,7 +38,7 @@ for building in buildings:
         ) as f:  # rotation data is not used yet
             rotation = json.load(f)
         with open(
-            f"data/{building['code']}/polyInfo_{part}.json", encoding="UTF-8"
+            f"data/{building['code']}/polyInfo/{part}.json", encoding="UTF-8"
         ) as f:  # rotation data is not used yet
             polyInfo = json.load(f)
         with open(

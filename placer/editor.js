@@ -15,9 +15,60 @@ let layers = {
     "osm": osm,
 }
 let map = L.map('map', {
+    keyboard: false,
     layers: Object.values(layers)
 });
 var layerControl = L.control.layers(layers, []).addTo(map);
+
+
+function rotatePoints(center, points, yaw) {
+    const res = []
+    const centerPoint = map.latLngToLayerPoint(center)
+    const angle = yaw * (Math.PI / 180)
+    for (let i = 0; i < points.length; i++) {
+        const p = map.latLngToLayerPoint(points[i])
+        // translate to center
+        const p2 = new L.Point(p.x - centerPoint.x, p.y - centerPoint.y)
+        // rotate using matrix rotation
+        const p3 = new L.Point(Math.cos(angle) * p2.x - Math.sin(angle) * p2.y, Math.sin(angle) * p2.x + Math.cos(angle) * p2.y)
+        // translate back to center
+        let p4 = new L.Point(p3.x + centerPoint.x, p3.y + centerPoint.y)
+        // done with that point
+        p4 = map.layerPointToLatLng(p4)
+        res.push(p4)
+    }
+    return res
+}
+
+function calculatePoly(img, currentSize, center, roatation) {
+    let width = img.width;
+    let height = img.height;
+    //normalize widht,height to 100m
+    let mwh = width > height ? width : height;
+    width = width / mwh * currentSize;
+    height = height / mwh * currentSize;
+    let bounds1 = center.toBounds(width);
+    let bounds2 = center.toBounds(height);
+
+    let corner1 = new L.LatLng(
+        bounds2.getSouthWest().lat,
+        bounds1.getSouthWest().lng,
+    )
+    let corner2 = new L.LatLng(
+        bounds2.getNorthEast().lat,
+        bounds1.getNorthEast().lng,
+    )
+    let bounds = new L.LatLngBounds(corner1, corner2)
+
+    var poly1 = [
+        [bounds.getSouthWest().lat, bounds.getSouthWest().lng],
+        [bounds.getSouthEast().lat, bounds.getSouthEast().lng],
+        [bounds.getNorthEast().lat, bounds.getNorthEast().lng],
+        [bounds.getNorthWest().lat, bounds.getNorthWest().lng]
+    ];
+    poly1 = rotatePoints(center, poly1, roatation)
+    return poly1;
+}
 
 //osm.addTo(map);
 
@@ -35,7 +86,7 @@ async function make(building, buildingparts) {
     let before = undefined
     map.setView([building.lat, building.lng], 18);
     for (let part in buildingparts) {
-        let partDataUrl = `/data/${building.code}/mapInfo_${part}.json`;
+        let partDataUrl = `/data/${building.code}/polyInfo/${part}_mapInfo.json`;
         let partData = undefined
         if (await (await fetch(`/exists${partDataUrl}`)).json() == true) {
             console.log("skip", building.code, part)
@@ -44,65 +95,55 @@ async function make(building, buildingparts) {
                 console.log("all ok")
                 continue;
             }
+
+            console.log("add ghost image")
+            let imageUrl = `/data/${building.code}/${viewtype}/${part}.png`;
+            let currentSize = partData["size"]
+            let roatation = partData["rotation"]
+            let center = L.latLng(partData["center"]["lat"], partData["center"]["lng"])
+            let imgrotation = 0
+            if (viewtype == "clear") {
+                imgrotation -= await (await fetch(`/data/${building.code}/rotation/${part}.json`)).json()
+            }
+            let img = new Image();
+            img.src = imageUrl;
+            await new Promise((resolve) => {
+                img.onload = function () {
+                    let poly1 = calculatePoly(img, currentSize, center, roatation + imgrotation)
+                    var overlay = L.imageOverlay.rotated(imageUrl, poly1[3], poly1[2], poly1[0], {
+                        opacity: 0.6,
+                        interactive: true,
+                        draggable: true,
+                        attribution: "&copy; <a href='http://www.lmu.de'>LMU</a>"
+                    }).addTo(map);
+                    lastImgs.push(overlay);
+                    if (lastImgs.length > 6) {
+                        map.removeLayer(lastImgs[0])
+                        lastImgs.shift()
+                    }
+                    before = {
+                        "rotation": roatation,
+                        "size": currentSize,
+                        "center": center,
+                        "img": {
+                            "width": img.width,
+                            "height": img.height
+                        }
+                    }
+                }
+                resolve()
+            });
         }
         let imgrotation = 0
         if (viewtype == "clear") {
-            imgrotation += await (await fetch(`/data/${building.code}/rotation/${part}.json`)).json()
+            imgrotation -= await (await fetch(`/data/${building.code}/rotation/${part}.json`)).json()
         }
         await new Promise((resolve) => {
             //map.setView([building.lat, building.lng], map.getZoom());
             let marker = L.marker([building.lat, building.lng]).addTo(map);
             //add image /img.png to map
-            var imageUrl = `/data/${building.code}/${viewtype}_${part}.png`;
+            var imageUrl = `/data/${building.code}/${viewtype}/${part}.png`;
 
-            function rotatePoints(center, points, yaw) {
-                const res = []
-                const centerPoint = map.latLngToLayerPoint(center)
-                const angle = yaw * (Math.PI / 180)
-                for (let i = 0; i < points.length; i++) {
-                    const p = map.latLngToLayerPoint(points[i])
-                    // translate to center
-                    const p2 = new L.Point(p.x - centerPoint.x, p.y - centerPoint.y)
-                    // rotate using matrix rotation
-                    const p3 = new L.Point(Math.cos(angle) * p2.x - Math.sin(angle) * p2.y, Math.sin(angle) * p2.x + Math.cos(angle) * p2.y)
-                    // translate back to center
-                    let p4 = new L.Point(p3.x + centerPoint.x, p3.y + centerPoint.y)
-                    // done with that point
-                    p4 = map.layerPointToLatLng(p4)
-                    res.push(p4)
-                }
-                return res
-            }
-
-            function calculatePoly(img, currentSize, center, roatation) {
-                let width = img.width;
-                let height = img.height;
-                //normalize widht,height to 100m
-                let mwh = width > height ? width : height;
-                width = width / mwh * currentSize;
-                height = height / mwh * currentSize;
-                let bounds1 = center.toBounds(width);
-                let bounds2 = center.toBounds(height);
-
-                let corner1 = new L.LatLng(
-                    bounds2.getSouthWest().lat,
-                    bounds1.getSouthWest().lng,
-                )
-                let corner2 = new L.LatLng(
-                    bounds2.getNorthEast().lat,
-                    bounds1.getNorthEast().lng,
-                )
-                let bounds = new L.LatLngBounds(corner1, corner2)
-
-                var poly1 = [
-                    [bounds.getSouthWest().lat, bounds.getSouthWest().lng],
-                    [bounds.getSouthEast().lat, bounds.getSouthEast().lng],
-                    [bounds.getNorthEast().lat, bounds.getNorthEast().lng],
-                    [bounds.getNorthWest().lat, bounds.getNorthWest().lng]
-                ];
-                poly1 = rotatePoints(center, poly1, roatation)
-                return poly1;
-            }
             let img = new Image();
             img.src = imageUrl;
             let currentSize = 100;
@@ -112,7 +153,7 @@ async function make(building, buildingparts) {
                 currentSize = before["size"]
                 roatation = before["rotation"]
                 center = L.latLng(before["center"]["lat"], before["center"]["lng"])
-                img.src = `/data/${building.code}/${viewtype}_${part}.png`;
+                img.src = `/data/${building.code}/${viewtype}/${part}.png`;
             }
             img.onload = function () {
                 if (partData != undefined) {
@@ -207,7 +248,7 @@ async function make(building, buildingparts) {
                                 "height": img.height
                             }
                         }
-                        fetch(`/save/data/${building.code}/mapInfo_${part}.json`,
+                        fetch(`/save/data/${building.code}/polyInfo/${part}_mapInfo.json`,
                             {
                                 method: "POST",
                                 headers: {
@@ -230,6 +271,30 @@ async function make(building, buildingparts) {
                         draggable.off("dragend", dragevent)
                         console.log("finish")
                         resolve()
+                    }
+                    // arrow keys to move the image
+                    moveMult = 0.1;
+                    if (e.shiftKey) {
+                        moveMult = 1;
+                    } else if (e.ctrlKey) {
+                        moveMult = 0.01;
+                    }
+                    if (e.key == "ArrowUp") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        center.lat += 0.0001 * moveMult;
+                    } else if (e.key == "ArrowDown") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        center.lat -= 0.0001 * moveMult;
+                    } else if (e.key == "ArrowLeft") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        center.lng -= 0.0001 * moveMult;
+                    } else if (e.key == "ArrowRight") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        center.lng += 0.0001 * moveMult;
                     }
                     console.log(roatation)
                     let poly1 = calculatePoly(img, currentSize, center, roatation + imgrotation)

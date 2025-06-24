@@ -50,26 +50,26 @@ def static_files(path):
     return flask.send_from_directory(".", path)
 
 
-@app.route("/downscale/<path:path>")
-def downscaleImage(path):
-    # downscale the image
-    img = Image.open(f"{path}")
-    img = img.resize((img.size[0] // 8, img.size[1] // 8))
-    imgb = io.BytesIO()
-    img.save(imgb, format="PNG")
-    imgb.seek(0)
-    return flask.send_file(imgb, mimetype="image/png")
-
-
-@app.route("/maxdownscale/<path:path>")
-def maxDownscaleImage(path):
-    # downscale the image
-    img = Image.open(f"{path}")
-    img = img.resize((img.size[0] // 70, img.size[1] // 70))
-    imgb = io.BytesIO()
-    img.save(imgb, format="PNG")
-    imgb.seek(0)
-    return flask.send_file(imgb, mimetype="image/png")
+#@app.route("/downscale/<path:path>")
+#def downscaleImage(path):
+#    # downscale the image
+#    img = Image.open(f"{path}")
+#    img = img.resize((img.size[0] // 8, img.size[1] // 8))
+#    imgb = io.BytesIO()
+#    img.save(imgb, format="PNG")
+#    imgb.seek(0)
+#    return flask.send_file(imgb, mimetype="image/png")
+#
+#
+#@app.route("/maxdownscale/<path:path>")
+#def maxDownscaleImage(path):
+#    # downscale the image
+#    img = Image.open(f"{path}")
+#    img = img.resize((img.size[0] // 70, img.size[1] // 70))
+#    imgb = io.BytesIO()
+#    img.save(imgb, format="PNG")
+#    imgb.seek(0)
+#    return flask.send_file(imgb, mimetype="image/png")
 
 
 @app.route("/exists/<path:path>")
