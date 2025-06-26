@@ -35,12 +35,16 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
     - zoom the image with _W/S_. refine the zoom with _w/s_.
     - _drag_ the image to the correct position on the map.
     - when you are done, press _Space_ to save the position and move to the next building.
+    - To better locate corners use _P_ to create one point that you can drag to move the image. using _P_ again will create a second point. Both will be anchored to the image and you can drag them to move and rotate the image (calculations are a bit off, but it works for now). Use _P_ again to remove the points.
+      - use _o_ to switch between the two points.
 
 11. after you have placed all the plans open `Add Positions` (http://localhost:3015/addPositions). This will create lat,lng positions for the rooms, and corners of the images. You will just need to wait for the site to finish processing.
 
 12. run `python 12_combineData.py` to combine all the data into one file.
 
-13. To Now finaly create the TileMaps cd into the mapTiling Folder and run `python main.py`. This will create the TileMaps in the `tiles` folder.
+13. You now need to manually replace "EG      (3. Flur)" With "EG", "OG 01 (4. Flur)" with "OG 01",  "OG 02 (5. Flur)" with "OG 02", ... (in `data\bw1505\uniqueBuildingParts.json`). use `python 13_replaceNames.py` to do this. 
+
+14. To Now finaly create the TileMaps cd into the mapTiling Folder and run `python main.py`. This will create the TileMaps in the `tiles` folder.
 
     ```cmd
     cd mapTiling
@@ -61,8 +65,9 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
 
   - `tags` to identify special information about the point
     point. (`{"tags": {"<tag>": "<value>"}}`)
-    - `roomId: boolean` to link the point to a room in the building.
+    - `room: boolean` to link the point to a room in the building (uses the rName. as seen in "rooms/latlng/\<floorid\>").
     - `private: boolean` to mark the point as private or private.
+    - `outside: boolean` to mark the point as outside.
   - A point can also include a `levelChange` property. This allows you to define stairs, elevators, or other transitions between floors.point. (`{"levelChange": [{levelId:"<level>", pointId: "<id>", "direction": "[up/down]"}]}`)
     - there is also a `levelChangeTodo: boolean` property that can be used to mark points that need to be defined later.
 
@@ -89,6 +94,8 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
 - _m_: Mark the _point_ as a level change point. This will be used later to define stairs, when the other levels are added.
 - _p_: Toggel the private state of the _Point_.
 - _t_: Edit the tags of the _Point_.
-- **ToDo** _e_: Add room id to the _Point_.
+- _e_: Add room id to the _Point_.
+- _o_: Mark the _Point_ as Outside.
+- _c_: mark all missing rooms.
 - _a_: Toggel the accessibility of the _Line_.
 - _l_: Toggel the locked state of the _Line_.

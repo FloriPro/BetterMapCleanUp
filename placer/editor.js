@@ -175,7 +175,21 @@ class MapHandler {
                 hiddenBuildingWatcher = hiddenBuildingsWatcher;
             }
         }
-        if (hiddenBuildingWatcher != undefined) {
+        if (hiddenBuildingWatcher == undefined) {
+            //check if the building is a watcher
+            if (Object.keys(HIDDEN_BUILDING_WATCHER).includes(building.code)) {
+                alert(`${building.code} is a watcher. check if there is a hidden building to copy data from.`);
+                for (let hiddenBuildings of HIDDEN_BUILDING_WATCHER[building.code]) {
+                    //check if http://localhost:3015/exists/data/bw1540/polyInfo/ returns true
+                    if (await (await fetch(`/exists/data/${hiddenBuildings}/polyInfo/`)).json() == true) {
+                        alert(`Found hidden building ${hiddenBuildings} for watcher ${building.code}. Copying data from it.`);
+                        hiddenBuildingWatcher = hiddenBuildings;
+                        break;
+                    }
+                }
+            }
+        }
+        if (hiddenBuildingWatcher != undefined && confirm(`Building ${building.code} is hidden. Do you want to copy the data from ${hiddenBuildingWatcher}?`)) {
             let watcherParts = await this.getBuilingParts(hiddenBuildingWatcher);
             let watcherPart = undefined;
             for (let watcherPartin of Object.keys(watcherParts)) {
@@ -190,13 +204,9 @@ class MapHandler {
             } else {
                 let buildingWatcherPartDataUrl = `/data/${hiddenBuildingWatcher}/polyInfo/${watcherPart}_mapInfo.json`;
                 if (await (await fetch(`/exists${buildingWatcherPartDataUrl}`)).json() == true) {
-                    let hiddenBuildingWatcherBuilding = {
-                        "code": hiddenBuildingWatcher,
-                    }
                     //copy the data from the watcher part
                     let partDataUrl = `/data/${building.code}/polyInfo/${part}_mapInfo.json`;
-                    await this.makeGhost(buildingWatcherPartDataUrl, watcherPart, hiddenBuildingWatcherBuilding);
-                    
+
                     console.log(`Copying data from ${buildingWatcherPartDataUrl} to ${partDataUrl}`);
                     let watcherPartData = await (await fetch(buildingWatcherPartDataUrl)).json();
                     await fetch("/save" + partDataUrl, {
@@ -215,6 +225,9 @@ class MapHandler {
                             "Content-Type": "application/json"
                         }
                     });
+
+                    //now make the ghost
+                    await this.makeGhost(partDataUrl, part, building);
                     return;
                 } else {
                     alert(`No data found for ${hiddenBuildingWatcher} and part ${part}, ${watcherPart} ${buildingWatcherPartDataUrl}. Please move the part manually.`);
@@ -232,6 +245,7 @@ class MapHandler {
             this.resolve = resolve;
             this.editor(partDataUrl, part, building)
         });
+        this.overlaydraggable.disable();
         document.removeEventListener("keydown", keylistener);
         document.removeEventListener("mousemove", mouseMove);
     }
@@ -267,10 +281,10 @@ class MapHandler {
             this.map.removeLayer(this.lastImgs[0])
             this.lastImgs.shift()
         }
-        let draggable = new L.Draggable(this.overlay._image);
-        draggable.enable();
+        this.overlaydraggable = new L.Draggable(this.overlay._image);
+        this.overlaydraggable.enable();
 
-        draggable.on("dragend", this.dragEvent.bind(this));
+        this.overlaydraggable.on("dragend", this.dragEvent.bind(this));
     }
 
     dragEvent(event) {
@@ -445,7 +459,7 @@ class MapHandler {
             }
             if (this.pointmovemarkers.length == 1) {
                 let point = this.pointmovemarkers[0].getLatLng();
-                this.map.setView(point, 20);
+                this.map.setView(point, this.map.getZoom());
             }
             if (this.pointmovemarkers.length == 2) {
                 this.currentSelectedPoint = (this.currentSelectedPoint + 1) % 2;
@@ -453,7 +467,7 @@ class MapHandler {
                     this.currentSelectedPoint = 0;
                 }
                 let point = this.pointmovemarkers[this.currentSelectedPoint].getLatLng();
-                this.map.setView(point, 20);
+                this.map.setView(point, this.map.getZoom());
             }
         }
         // arrow keys to move the image
@@ -488,15 +502,27 @@ class MapHandler {
 }
 
 
-const SKIP_DEBUG = 47;
+const SKIP_DEBUG = 82;
 const mapHandler = new MapHandler();
 
 (async () => {
     window.buildings = await (await fetch("/data_buildingsJSON.json")).json()
     let buildings = window.buildings;
+    //put all buildings where buildings["code"] is in Object.keys(HIDDEN_BUILDING_WATCHER) at the start of the array
+    buildings = buildings.sort((a, b) => {
+        if (Object.keys(HIDDEN_BUILDING_WATCHER).includes(a.code) && !Object.keys(HIDDEN_BUILDING_WATCHER).includes(b.code)) {
+            return -1;
+        }
+        if (!Object.keys(HIDDEN_BUILDING_WATCHER).includes(a.code) && Object.keys(HIDDEN_BUILDING_WATCHER).includes(b.code)) {
+            return 1;
+        }
+        return 0;
+    });
+
     let i = 0;
-    for (building of buildings) {
+    for (let building of buildings) {
         i++;
+        console.log(`Processing building ${i}/${buildings.length}: ${building.code}`);
         if (i < SKIP_DEBUG) {
             continue;
         }

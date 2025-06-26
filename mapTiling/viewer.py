@@ -12,13 +12,20 @@ def index():
     return flask.send_from_directory(".", "index.html")
 
 
+@app.route("/tilesLQ/<path:path>")
+def tilesLQ(path):
+    # send static files
+    if os.path.exists(path):
+        return flask.send_from_directory("./tiles", path)
+    return ""
+
+
 @app.route("/<path:path>")
 def static_files(path):
     # send static files
     if os.path.exists(path):
         return flask.send_from_directory(".", path)
     return ""
-
 
 
 app.run(host="localhost", port=3017, debug=False)

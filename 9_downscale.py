@@ -41,12 +41,13 @@ def getUniqueBuildingParts(buildingid):
 def downscale(buildingid, building, adding, viewtype, scale):
     buildingParts = getUniqueBuildingParts(buildingid)
     for part, value in buildingParts.items():
-        if os.path.exists(f"data/{buildingid}/{adding}_{part}.png") == True:
+        savePath = f"data/{buildingid}/{adding.replace('<part>', part)}"
+        if os.path.exists(savePath) == True:
             continue
         print(f"[buildingid]: {buildingid}, [part]: {part}, [viewtype]: {viewtype}")
         img = Image.open(f"data/{buildingid}/{viewtype}/{part}.png")
         img = img.resize((img.size[0] // scale, img.size[1] // scale))
-        img.save(f"data/{buildingid}/{adding.replace('<part>', part)}")
+        img.save(savePath)
 
 
 bj = getbuildingsJSON()

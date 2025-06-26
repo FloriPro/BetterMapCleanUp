@@ -13,81 +13,36 @@ let map = L.map('map', {
 
 class _getter {
     constructor() {
-        this.waiters = []
     }
 
-    async getData() {
-        if (this.fetching) {
-            await new Promise(async (resolve, reject) => {
-                this.waiters.push(resolve)
-            })
-            return this.data
-        }
-        if (this.data != undefined) {
-            return this.data
-        }
-        if (localStorage["lmumap_data.json"] != undefined) {
-            try {
-                this.data = JSON.parse(localStorage["lmumap_data.json"])
-                return this.data
-            } catch (e) {
-                console.error(e)
-            }
-        }
-
-        this.fetching = true;
-        this.data = await (await fetch(`data/data.json`)).json()
-        localStorage["lmumap_data.json"] = JSON.stringify(this.data)
-        this.fetching = false;
-        for (let waiter of this.waiters) {
-            waiter()
-        }
-        return this.data
-    }
 
     async getBuildings() {
-        let data = await this.getData()
-        return data.buildings;
+        let buildings = await (await fetch("/data_buildingsJSON.json")).json();
+        return buildings;
     }
 
     async getBuilding(buildingid) {
-        let data = await this.getBuildings()
-        return data.filter((e) => {
-            return e.code == buildingid
-        })[0]
+        throw Error("getBuilding not implemented")
     }
 
     async getRoom(buildingid, displayName) {
-        let parts = await this.getBuilingParts(buildingid)
-        for (let part of Object.keys(parts)) {
-            let rooms = await this.getRooms(buildingid, part)
-            for (let room of rooms) {
-                if (room.rName == displayName) {
-                    room.part = part
-                    return room
-                }
-            }
-        }
+        throw Error("getRoom not implemented")
     }
 
     async getBuilingParts(buildingid) {
-        let data = await this.getData()
-        return data.buildingParts[buildingid];
+        return await (await fetch(`/data/${buildingid}/uniqueBuildingParts.json`)).json();
     }
 
     async getRooms(buildingid, part) {
-        let data = await this.getData()
-        return data.part[buildingid][part].rooms;
+        return await (await fetch(`/data/${buildingid}/rooms/${part}.json`)).json();
     }
 
     async getPartData(buildingid, part) {
-        let data = await this.getData()
-        return data.part[buildingid][part].mapInfo;
+        return await (await fetch(`/data/${buildingid}/polyInfo/${part}_mapInfo.json`)).json();
     }
 
     async getImgRotation(buildingid, part) {
-        let data = await this.getData()
-        return data.part[buildingid][part].rotation;
+        return await (await fetch(`/data/${buildingid}/rotation/${part}.json`)).json();
     }
 }
 
@@ -161,21 +116,36 @@ function mapPointToImage(img, currentSize, center, roatation, pixelxy) {
     return latlng
 }
 
+async function getImg(url) {
+    let img = new Image();
+    img.src = url;
+    await new Promise((resolve, reject) => {
+        img.onload = () => resolve(img);
+        img.onerror = (e) => reject(e);
+    });
+    return img;
+}
+
 
 
 async function addBuildingPart(building, part, buildingparts) {
-    let imageUrl = `/data/${building.code}/${viewtype}_${part}.png`;
-    let useImageUrl = `/data/${building.code}/downscale/${viewtype}/${part}_maxdownscale.png`
+    let imageUrl = `/data/${building.code}/${viewtype}/${part}.png`;
+    let imageRotateUrl = `/data/${building.code}/rotation/${part}.png`;
+    //let useImageUrl = `/data/${building.code}/downscale/${viewtype}/${part}_maxdownscale.png`
+    let useImageUrl = `/data/${building.code}/downscale/${viewtype}/${part}_downscale.png`
     let partData = await getter.getPartData(building.code, part)
     let center = new L.LatLng(partData.center.lat, partData.center.lng)
 
     partData.imgrotation = 0;
     partData.imgPos = partData.img;
     partData.imgSize = partData.size;
+    partData.img = await getImg(imageRotateUrl);
+    partData.unrotateimg = await getImg(imageUrl);
+
     if (viewtype == "clear") {
         //partData.imgrotation += await (await fetch(`/data/${building.code}/rotation/${part}.json`)).json()
-        partData.imgrotation -= await getter.getImgRotation(building.code, part);
-        let oimg = partData.img;
+        partData.imgrotation += await getter.getImgRotation(building.code, part);
+        let oimg = partData.unrotateimg;
         partData.imgPos = partData.unrotateimg
 
         let rotated_width = oimg.width;
@@ -192,7 +162,7 @@ async function addBuildingPart(building, part, buildingparts) {
     })
     img.addTo(map);
 
-    await fetch(`/save/data/${building.code}/polyInfo/${part}.json`,
+    let promise1 = fetch(`/save/data/${building.code}/polyInfo/${part}.json`,
         {
             method: "POST",
             headers: {
@@ -213,12 +183,12 @@ async function addBuildingPart(building, part, buildingparts) {
     let roomsData = {};
     for (let room of rooms) {
         roomsData[room.rName] = room;
-        let npX = room.npX
-        let npY = room.npY
-        let latlng = mapPointToImage(partData.img, partData.size, center, partData.rotation, [npX, npY]);
+        let pX = room.pX
+        let pY = room.pY
+        let latlng = mapPointToImage(partData.unrotateimg, partData.size, center, partData.rotation - partData.imgrotation, [pX, pY]);
         roomsData[room.rName].latlng = latlng;
     }
-    await fetch(`/save/data/${building.code}/rooms/latlng/${part}.json`, {
+    let promise2 = fetch(`/save/data/${building.code}/rooms/latlng/${part}.json`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
@@ -228,10 +198,30 @@ async function addBuildingPart(building, part, buildingparts) {
         })
     });
 
+
     oldImgs.push(img);
     if (oldImgs.length > 10) {
         let img = oldImgs.shift();
         map.removeLayer(img);
+    }
+    await Promise.all([promise1, promise2]).then(() => {
+        console.log(`Added part ${part} of building ${building.code}`)
+    }).catch((e) => {
+        console.error(`Error adding part ${part} of building ${building.code}`, e)
+    })
+
+    window.oldMarkers = window.oldMarkers || [];
+    //remove old markers
+    for (let marker of window.oldMarkers) {
+        map.removeLayer(marker);
+    }
+    window.oldMarkers = [];
+    for (let room of Object.keys(roomsData)) {
+        let marker = L.marker(roomsData[room].latlng, {
+            title: roomsData[room].rName,
+        });
+        marker.addTo(map);
+        window.oldMarkers.push(marker);
     }
 }
 
@@ -242,9 +232,16 @@ async function addBuilding(building, buildingparts) {
     }
 }
 
+let SKIP_DEBUG = 57;
 (async () => {
     let buildings = await getter.getBuildings()
+    let i = 0;
     for (building of buildings) {
+        i++;
+        console.log(`Adding building ${building.code} (${i + 1}/${buildings.length})`)
+        if (SKIP_DEBUG > 0 && i < SKIP_DEBUG) {
+            continue;
+        }
         let buildingparts = await getter.getBuilingParts(building["code"])
         await addBuilding(building, buildingparts)
     }

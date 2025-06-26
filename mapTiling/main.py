@@ -455,9 +455,9 @@ def planTiler(minZoom, maxZoom):
             (egpartid, eg) = eg[0]
             print("using default level EG for building", eg["level"], buildingId)
 
-            egImg = PILImage.open(
-                f"../data/{buildingId}/clear/{egpartid}.png"
-            ).convert("RGBA")
+            egImg = PILImage.open(f"../data/{buildingId}/clear/{egpartid}.png").convert(
+                "RGBA"
+            )
             # make everything that is not transparent white
             img_array = numpy.array(egImg)
             non_transparent = img_array[:, :, 3] > 0
@@ -495,7 +495,8 @@ def planTiler(minZoom, maxZoom):
                     )
                     levels[level].add_image(mapPilThisImg)
 
-
+    print(f"Levels: {', '.join(levels.keys())}")
+    input("Press Enter to continue...")
     for level, tiler in levels.items():
         print(f"Level: {level}")
         tiler.make(minZoom, maxZoom)
