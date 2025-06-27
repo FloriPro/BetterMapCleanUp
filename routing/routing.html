@@ -16,15 +16,90 @@
       html {
         margin: 0;
         padding: 0;
+
+        font-family: Arial, sans-serif;
       }
 
       #map {
         height: 100vh;
         width: 100vw;
       }
+      .help-menu {
+        max-width: 350px;
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 1000;
+        font-size: 0.5rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        padding: 0.3rem;
+      }
+      .help-menu ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      .help-menu li {
+        margin-bottom: 1rem;
+      }
+      .key {
+        font-weight: bold;
+        background-color: #eee;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-family: monospace;
+      }
     </style>
   </head>
   <body>
+    <div class="help-menu">
+      <ul>
+        <li>
+          <span class="key">Space</span> or any mouse button: Enable dragging
+          the map while on the canvas.
+        </li>
+        <li>
+          <span class="key">Mouse Drag</span>: Add a line to represent a route
+          segment.
+        </li>
+        <li>
+          <span class="key">Shift + Mouse Drag</span>: Move an existing
+          <em>point</em> if the cursor is near it.
+        </li>
+        <li>
+          <span class="key">Ctrl + Mouse Drag</span>: - Remove a
+          <em>point</em> (and connected lines) if near one.<br />
+          - Remove a <em>line</em> if near one.
+        </li>
+        <li>
+          <span class="key">m</span>: Mark the <em>point</em> as a level change
+          point (for stairs, later).
+        </li>
+        <li>
+          <span class="key">p</span>: Toggle the private state of the
+          <em>point</em>.
+        </li>
+        <li>
+          <span class="key">t</span>: Edit the tags of the <em>point</em>.
+        </li>
+        <li>
+          <span class="key">e</span>: Add a room ID to the <em>point</em>.
+        </li>
+        <!--- _o_: Mark the _Point_ as Outside.-->
+        <li><span class="key">o</span>: Mark the <em>point</em> as outside.</li>
+        <li><span class="key">c</span>: mark all missing rooms.</li>
+        <li>
+          <span class="key">a</span>: Toggle the accessibility of the
+          <em>line</em>.
+        </li>
+        <li>
+          <span class="key">l</span>: Toggle the locked state of the
+          <em>line</em>.
+        </li>
+      </ul>
+    </div>
     <div id="map"></div>
   </body>
 </html>

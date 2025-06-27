@@ -76,12 +76,13 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
     - `{"tags": {"<tag>": "<value>"}}`
       - `accessible: boolean` for wheelchair accessible routes
       - `locked: boolean` if the line goes through a locked door
-      - `type: "<type>"` to define the type of the line, e.g. "corridor", "staircase", "elevator", etc.
+      - `unlikely: boolean` if the line is unlikely to be used (e.g. to stop the routing algorithm from using it if not necessary)
 
 ## UI Symbols
 
 - locksymbol on point: private room
 - dashed line: a line that is not accessible, e.g. a locked door or a wall.
+- two dashed lines: a line that is unlikely and should not be used for unnecessary routing.
 - pink line: line is not accessible for wheelchair users.
 - arrow in both directions: the line is a level change point, e.g. a staircase or an elevator.
 
@@ -99,3 +100,6 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
 - _c_: mark all missing rooms.
 - _a_: Toggel the accessibility of the _Line_.
 - _l_: Toggel the locked state of the _Line_.
+
+## Test Routing
+To test the routing, you can use the `test.py` script in the `routing` folder with `python .\routing\test.py "D 098" "G 024"`. There currently is no smart search, so the room names need to be exact.

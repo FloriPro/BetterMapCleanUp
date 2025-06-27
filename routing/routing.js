@@ -15,12 +15,25 @@ let layers = {
     "osm": osm,
 }
 let map = L.map('map', {
-    layers: Object.values(layers)
+    layers: Object.values(layers),
 });
 var layerControl = L.control.layers(layers, []).addTo(map);
 
 let building;
 let selected_floor;
+
+const HIDDEN_BUILDING_WATCHER = {
+    //<building not hidden>: [<building hidden>, ...]
+    "bw0000": ["bw0040"],
+    "bw0070": ["bw0073"],
+    "bw0120": ["bw0110", "bw0121", "bw0122"],
+    "bw0800": ["bw0801"],
+    "bw0822": ["bw0820"],
+    "bw1120": ["bw1110"],
+    "bw1509": ["bw1502"],
+    "bw1540": ["bw1541"],
+}
+
 
 function resetLayer() {
     localStorage.removeItem("createRouting_current")
@@ -28,7 +41,7 @@ function resetLayer() {
 }
 
 async function getCorners(building, floor) {
-    let corners = await (await fetch(`/data/${building}/polyInfo_${floor}.json`)).json().catch(e => {
+    let corners = await (await fetch(`/data/${building}/polyInfo/${floor}.json`)).json().catch(e => {
         alert("Error loading corners data")
     });
     return corners;
@@ -206,13 +219,14 @@ function pxToLatLng(corners, x, y, canvasWidth, canvasHeight) {
 
 
 class RoutingGenerator {
-    constructor(building, floorData, corners, canvas, floorimg, canvasRotation) {
+    constructor(building, floorData, corners, canvas, floorimg, canvasRotation, roomInfo) {
         this.building = building;
         this.floorData = floorData;
         this.corners = corners;
         this.canvas = canvas;
         this.floorimg = floorimg;
         this.canvasRotation = canvasRotation; // Convert degrees to radians
+        this.roomInfo = roomInfo;
 
         this.ctx = this.canvas.getContext("2d");
         this.ctx.drawPoint = drawPoint.bind(this.ctx);
@@ -234,6 +248,8 @@ class RoutingGenerator {
         this.arrowBothImg.src = "/routing/img/arrowBoth.png"
         this.lockImg = new Image();
         this.lockImg.src = "/routing/img/lock.png";
+        this.raindropImg = new Image();
+        this.raindropImg.src = "/routing/img/raindrop.png";
     }
 
     async start() {
@@ -365,12 +381,21 @@ class RoutingGenerator {
                     this.ctx.strokeStyle = "black";
                 }
                 if (this.getLineTag(line, "locked") == true) {
-                    this.ctx.setLineDash([5, 5]);
+                    if (this.getLineTag(line, "unlikely") == true) {
+                        this.ctx.setLineDash([10, 5, 2, 2]);
+                    } else {
+                        this.ctx.setLineDash([5, 5]);
+                    }
+                } else if (this.getLineTag(line, "unlikely") == true) {
+                    //twodash
+                    this.ctx.setLineDash([2, 2, 10, 2]);
                 } else {
                     this.ctx.setLineDash([]);
                 }
                 this.ctx.lineWidth = 3;
                 this.ctx.stroke();
+
+                this.ctx.setLineDash([]);
             } else {
                 console.warn("Line has undefined points:", line, startPoint, endPoint);
             }
@@ -388,6 +413,26 @@ class RoutingGenerator {
             if (this.getTag(pointId, "private") == true) {
                 this.rotateCtx(this.canvasRotation * (Math.PI / 180), point.x, point.y);
                 this.ctx.drawImage(this.lockImg, point.x - 10, point.y - 10, 20, 20);
+                this.unrotateCtx();
+            }
+            if (this.getTag(pointId, "room")) {
+                let room = this.roomInfo.rooms[this.getTag(pointId, "room")];
+                if (room) {
+                    //line to the room center
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(point.x, point.y);
+                    this.ctx.lineTo(room.pX, room.pY);
+                    this.ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+
+                } else {
+                    console.warn("Room not found for point:", pointId, "Room name:", this.getTag(pointId, "room"));
+                }
+            }
+            if (this.getTag(pointId, "outside") == true) {
+                this.rotateCtx(this.canvasRotation * (Math.PI / 180), point.x, point.y);
+                this.ctx.drawImage(this.raindropImg, point.x - 10, point.y - 10, 20, 20);
                 this.unrotateCtx();
             }
         }
@@ -431,6 +476,20 @@ class RoutingGenerator {
             this.ctx.stroke();
         }
         if (this.currentDo === "addRoom") {
+            this.ctx.drawPoint(
+                this.mousePosition.x,
+                this.mousePosition.y,
+                50,
+                "#00000050"
+            )
+            if (this.addRoomNearestRoom) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.points[this.addRoomTo].x, this.points[this.addRoomTo].y);
+                this.ctx.lineTo(this.addRoomNearestRoom.pX, this.addRoomNearestRoom.pY);
+                this.ctx.strokeStyle = "orange";
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+            }
 
         }
     }
@@ -486,7 +545,8 @@ class RoutingGenerator {
 
 
     setupMouseHandlers() {
-        this.canvas.addEventListener("mousemove", (e) => {
+        this.canvas.addEventListener("pointermove", (e) => {
+            if (!["mouse", "pen"].includes(e.pointerType)) { return; }
             if (this.currentlyMovingView) return;
             this.mousePosition.x = e.offsetX;
             this.mousePosition.y = e.offsetY;
@@ -535,11 +595,28 @@ class RoutingGenerator {
                         this.saveData();
                     }
                 }
+            } else if (this.currentDo === "addRoom") {
+                this.addRoomNearestRoom = undefined;
+                let nearestDistance = Infinity;
+                for (let room of Object.values(this.roomInfo.rooms)) {
+                    let distance = Math.sqrt(
+                        Math.pow(room.pX - this.mousePosition.x, 2) +
+                        Math.pow(room.pY - this.mousePosition.y, 2)
+                    );
+                    if (distance < nearestDistance) {
+                        this.addRoomNearestRoom = room;
+                        nearestDistance = distance;
+                    }
+                }
+                if (nearestDistance > 50) {
+                    this.addRoomNearestRoom = undefined;
+                }
             }
             this.redrawCanvas();
         });
 
-        this.canvas.addEventListener("mousedown", (event) => {
+        this.canvas.addEventListener("pointerdown", (event) => {
+            if (!["mouse", "pen"].includes(event.pointerType)) { return; }
             if (this.currentlyMovingView) return;
             if (event.button !== 0) return; // Only handle left mouse button
             event.preventDefault();
@@ -604,7 +681,8 @@ class RoutingGenerator {
             }
         });
 
-        this.canvas.addEventListener("mouseup", (event) => {
+        this.canvas.addEventListener("pointerup", (event) => {
+            if (!["mouse", "pen"].includes(event.pointerType)) { return; }
             if (this.currentlyMovingView) return;
             if (event.button !== 0) return; // Only handle left mouse button
             event.preventDefault();
@@ -612,7 +690,47 @@ class RoutingGenerator {
 
             if (this.currentDo === "addLine") {
                 this.currentDo = "none";
-                let newPointId = this.nearestPointId || this.createPoint(this.mousePosition);
+                /*let newPointId = this.nearestPointId || this.createPoint(this.mousePosition);
+                */
+                let newPointId
+                if (this.nearestPointId) {
+                    newPointId = this.nearestPointId;
+                } else {
+                    let nearestLine = this.getNearestLine();
+                    if (!nearestLine) {
+                        newPointId = this.createPoint(this.mousePosition);
+                    } else {
+                        let npOnLine = nearestPointOnLine(
+                            this.mousePosition.x, this.mousePosition.y,
+                            this.points[nearestLine.start].x, this.points[nearestLine.start].y,
+                            this.points[nearestLine.end].x, this.points[nearestLine.end].y
+                        );
+
+                        let tolng = pxToLatLng(this.corners, npOnLine.x, npOnLine.y, this.canvas.width, this.canvas.height);
+                        newPointId = this.createPoint({
+                            x: npOnLine.x,
+                            y: npOnLine.y,
+                            lat: tolng.lat,
+                            lng: tolng.lng
+                        });
+
+                        let nearestLineIndex = this.lines.indexOf(nearestLine);
+                        if (nearestLineIndex === -1) {
+                            console.warn("Nearest line not found in lines array:", nearestLine);
+                            return;
+                        }
+                        this.lines.splice(nearestLineIndex, 1);
+
+                        this.lines.push({
+                            start: nearestLine.start,
+                            end: newPointId,
+                        });
+                        this.lines.push({
+                            start: nearestLine.end,
+                            end: newPointId,
+                        });
+                    }
+                }
                 if (this.addlinestart !== newPointId) {
                     let lineExists = this.lines.some(line =>
                         (line.start === this.addlinestart && line.end === newPointId) ||
@@ -704,8 +822,6 @@ class RoutingGenerator {
                 this.currentDo = "none";
                 this.redrawCanvas();
             }
-            else if (this.currentDo === "addRoom") {
-            }
         });
     }
     setupKeyboardHandlers() {
@@ -724,9 +840,19 @@ class RoutingGenerator {
                     this.addlinestart = null;
                     this.redrawCanvas();
                 }
+                else if (this.currentDo === "addRoom") {
+                    this.addRoomNearestRoom = undefined;
+                    this.currentDo = "none";
+                    this.redrawCanvas();
+                }
             }
-            if (event.key === "e") {
-                this.currentDo = "addRoom";
+            if (event.key === "e" && this.currentDo === "none") {
+                this.updateNearestPoint();
+                if (this.nearestPointId) {
+                    this.addRoomTo = this.nearestPointId
+                    this.addRoomNearestRoom = undefined;
+                    this.currentDo = "addRoom";
+                }
             }
         });
 
@@ -736,6 +862,10 @@ class RoutingGenerator {
                 this.canvas.style.cursor = "";
             }
             if (event.key === "e") {
+                if (this.addRoomNearestRoom) {
+                    this.setTag(this.addRoomTo, "room", this.addRoomNearestRoom.rName);
+                }
+                this.addRoomNearestRoom = undefined;
                 this.currentDo = "none";
                 this.redrawCanvas();
             }
@@ -774,6 +904,62 @@ class RoutingGenerator {
                         this.redrawCanvas();
                     }
                     break;
+                case "o":
+                    //mark point as outside
+                    this.updateNearestPoint();
+                    if (this.nearestPointId) {
+                        this.setTag(this.nearestPointId, "outside", this.getTag(this.nearestPointId, "outside") != true);
+                    }
+                    this.redrawCanvas();
+                    break;
+                case "c":
+                    if (this.roomsMissingMarkers && this.roomsMissingMarkers.length > 0) {
+                        // Clear existing markers
+                        this.roomsMissingMarkers.forEach(marker => {
+                            map.removeLayer(marker);
+                        });
+                        this.roomsMissingMarkers = [];
+                        return;
+                    }
+                    //mark all missing rooms.
+                    let roomsMissing = Object.keys(this.roomInfo.rooms)
+                    for (let pointId in this.points) {
+                        let rtag = this.getTag(pointId, "room")
+                        if (rtag != undefined) {
+                            roomsMissing = roomsMissing.filter(r => r != rtag)
+                        }
+                    }
+                    this.roomsMissingMarkers = [];
+                    for (let roomId of roomsMissing) {
+                        let room = this.roomInfo.rooms[roomId];
+                        if (room) {
+                            console.log("Adding marker for missing room:", roomId, room);
+                            let marker = L.marker([room.latlng.lat, room.latlng.lng], {
+                                title: room.rName,
+                                icon: L.divIcon({
+                                    className: 'room-marker',
+                                    html: `<div style="background-color: red; color: white; padding: 5px; border-radius: 5px; pointer-events: none;">${room.rName}</div>`,
+                                    iconSize: [100, 30],
+                                    iconAnchor: [50, 15]
+                                }),
+                                interactive: false // Make marker clickthrough
+                            });
+
+                            this.roomsMissingMarkers.push(marker);
+                            map.addLayer(marker);
+                        } else {
+                            console.warn("Room not found:", roomId);
+                        }
+                    }
+                    break;
+                case "u":
+                    // add tag: unlikely to line
+                    let nearestLine3 = this.getNearestLine();
+                    if (nearestLine3) {
+                        this.setLineTag(nearestLine3, "unlikely", this.getLineTag(nearestLine3, "unlikely") != true);
+                    }
+                    this.redrawCanvas();
+                    break;
                 default:
                     return; // Ignore other keys
             }
@@ -783,8 +969,8 @@ class RoutingGenerator {
 
 
 
-async function startRoutingCreation(building, floorData, corners, canvas, floorimg, canvasRotation) {
-    let routingGenerator = new RoutingGenerator(building, floorData, corners, canvas, floorimg, canvasRotation);
+async function startRoutingCreation(building, floorData, corners, canvas, floorimg, canvasRotation, roomInfo) {
+    let routingGenerator = new RoutingGenerator(building, floorData, corners, canvas, floorimg, canvasRotation, roomInfo);
     await routingGenerator.start();
     window.currentRoutingGenerator = routingGenerator;
     console.log("Routing creation started for building:", building, "floor:", floorData.id);
@@ -830,11 +1016,59 @@ async function loadFloor(building, floor) {
     let corners = (await getCorners(building, floorData.id)).poly;
     console.log("Corners:", corners)
 
+    //rooms/latlng/g003001.json
+    let roomInfo = await (await fetch(`/data/${building}/rooms/latlng/${floorData.id}.json`)).json().catch(e => {
+        console.error("Error loading room data:", e);
+        alert("Error loading room data")
+        return
+    });
+    if (Object.keys(HIDDEN_BUILDING_WATCHER).includes(building)) {
+        for (let otherbuildingid of HIDDEN_BUILDING_WATCHER[building]) {
+            let otherbuildingParts = await (await fetch(`/data/${otherbuildingid}/uniqueBuildingParts.json`)).json().catch(e => {
+                console.error("Error loading other building data:", e);
+                alert("Error loading other building data")
+                return
+            });
+            if (otherbuildingParts == undefined) {
+                continue
+            }
+            for (let otherfloorkeys of Object.keys(otherbuildingParts)) {
+                let otherfloor = otherbuildingParts[otherfloorkeys];
+                if (otherfloor.level == selected_floor) {
+                    let otherroomsData = await (await fetch(`/data/${otherbuildingid}/rooms/latlng/${otherfloorkeys}.json`)).json().catch(e => {
+                        console.error("Error loading other room data:", e);
+                        alert("Error loading other room data")
+                        return
+                    });
+                    if (otherroomsData == undefined) {
+                        continue
+                    }
+                    let otherrooms = otherroomsData.rooms;
+                    // Merge room data
+                    console.log(`Merging rooms from ${otherbuildingid} into ${building} (${Object.keys(otherrooms).length} rooms)`);
+                    for (let roomId of Object.keys(otherrooms)) {
+                        if (!roomInfo.rooms[roomId]) {
+                            console.log(`Merging room ${roomId} from ${otherbuildingid}`);
+                            roomInfo.rooms[roomId] = otherrooms[roomId];
+                        } else {
+                            console.warn(`Room ${roomId} already exists in roomInfo, skipping merge.`);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (roomInfo == undefined) {
+        alert("Error loading room data")
+        return
+    }
+
     map.setView([48.14899315841645, 11.580760594532162], 16)
     map.removeControl(map.zoomControl);
 
     //set img to the canvas
-    let floorimgurl = `/data/${building}/clear_${floorData.id}.png`;
+    let floorimgurl = `/data/${building}/clear/${floorData.id}.png`;
     let floorimg = new Image();
     floorimg.src = floorimgurl;
     let canvasRotation;
@@ -852,7 +1086,7 @@ async function loadFloor(building, floor) {
             pan: { duration: 0 }
         });
 
-        startRoutingCreation(building, floorData, corners, canvas, floorimg, canvasRotation);
+        startRoutingCreation(building, floorData, corners, canvas, floorimg, canvasRotation, roomInfo);
     };
 
     let overlay = L.imageOverlay.rotated(
