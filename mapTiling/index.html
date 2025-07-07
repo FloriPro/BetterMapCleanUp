@@ -106,7 +106,12 @@
       const buttonContainer = document.getElementById("levelButtons");
 
       levels.forEach((level, index) => {
-        tileLayers[level] = L.tileLayer(`/tiles/${level}/{z}/{x}/{y}.png`, {
+        let addLQ = false;
+        //if on domain https://raumplan.flulu.de/index.html add LQ
+        if (window.location.hostname === "raumplan.flulu.de") {
+          addLQ = true;
+        }
+        tileLayers[level] = L.tileLayer(`/tiles${addLQ ? "LQ" : ""}/${level}/{z}/{x}/{y}.png`, {
           minZoom: 12,
           maxZoom: 21,
         });

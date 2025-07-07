@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="/placer/viewer/mystyle.css" />
+    <link rel="stylesheet" href="/placer/viewer/viewerstyle.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Document</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
         const registerServiceWorker = async () => {
             if ("serviceWorker" in navigator) {
                 try {
-                    const registration = await navigator.serviceWorker.register("/sw.js", {
+                    const registration = await navigator.serviceWorker.register("/sw_placer_viewer_sw.js", {
                         scope: "/",
                     });
                     if (registration.installing) {

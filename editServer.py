@@ -18,6 +18,7 @@ def index():
     <br>
 
     <a href="/routing">1: Routing</a><br>
+    <a href="/connect">2: Routing Connect</a><br>
 """
 
 
@@ -26,11 +27,16 @@ def viewer():
     # send file index.html
     return flask.send_file("placer/viewer/viewer.html")
 
+@app.route("/sw_placer_viewer_sw.js")
+def sw_placer_viewer_sw():
+    # send service worker file
+    return flask.send_file("placer/viewer/sw.js")
 
 @app.route("/placer")
 def placer():
     # send file index.html
     return flask.send_file("placer/placer.html")
+
 
 @app.route("/addPositions")
 def addPositions():
@@ -44,14 +50,20 @@ def routing():
     return flask.send_file("routing/routing.html")
 
 
+@app.route("/connect")
+def connectRouting():
+    # send file index.html
+    return flask.send_file("routing/routingConnect.html")
+
+
 @app.route("/<path:path>")
 def static_files(path):
     # send static files
     return flask.send_from_directory(".", path)
 
 
-#@app.route("/downscale/<path:path>")
-#def downscaleImage(path):
+# @app.route("/downscale/<path:path>")
+# def downscaleImage(path):
 #    # downscale the image
 #    img = Image.open(f"{path}")
 #    img = img.resize((img.size[0] // 8, img.size[1] // 8))
@@ -61,8 +73,8 @@ def static_files(path):
 #    return flask.send_file(imgb, mimetype="image/png")
 #
 #
-#@app.route("/maxdownscale/<path:path>")
-#def maxDownscaleImage(path):
+# @app.route("/maxdownscale/<path:path>")
+# def maxDownscaleImage(path):
 #    # downscale the image
 #    img = Image.open(f"{path}")
 #    img = img.resize((img.size[0] // 70, img.size[1] // 70))
@@ -88,5 +100,6 @@ def save(path):
     with open(f"{path}", "w") as f:
         f.write(flask.request.data.decode("utf-8"))
     return "ok"
+
 
 app.run(host="localhost", port=3015, debug=True)
