@@ -36,8 +36,25 @@ const HIDDEN_BUILDING_WATCHER = {
 
 
 function resetLayer() {
-    localStorage.removeItem("createRouting_current")
-    localStorage.removeItem("createRouting_floor")
+    let urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has("building")) {
+        urlParams.delete("building");
+    }
+    if (urlParams.has("floor")) {
+        urlParams.delete("floor");
+    }
+    window.history.replaceState({}, '', `${window.location.pathname}?${urlParams}`);
+}
+function setFloor(floor) {
+    //use url parameter to set the floor
+    let urlParams = new URLSearchParams(window.location.search);
+    urlParams.set("floor", floor);
+    window.history.replaceState({}, '', `${window.location.pathname}?${urlParams}`);
+}
+
+function getFloor() {
+    let urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get("floor");
 }
 
 async function getCorners(building, floor) {
@@ -56,14 +73,13 @@ function selectLayer() {
     }
     localStorage.setItem("createRouting_current", building)
 
-    selected_floor = localStorage.getItem("createRouting_floor")
+    selected_floor = getFloor();
     if (selected_floor == null) {
         selected_floor = prompt("target Floor")
     } else {
-        //selected_floor = prompt("target Floor", selected_floor)
     }
-    //selected_floor = prompt("target Floor", selected_floor ? selected_floor : "")
-    localStorage.setItem("createRouting_floor", selected_floor)
+
+    setFloor(selected_floor);
 
     console.log("Building:", building, "Floor:", selected_floor)
 }
@@ -419,15 +435,47 @@ class RoutingGenerator {
                 let room = this.roomInfo.rooms[this.getTag(pointId, "room")];
                 if (room) {
                     //line to the room center
+                    //if the line is too long, draw start and end line
+                    let linelength = Math.sqrt(
+                        Math.pow(point.x - room.pX, 2) +
+                        Math.pow(point.y - room.pY, 2)
+                    )
+                    if (linelength > 200 && !(this.nearestPointId == pointId)) {
+                        this.ctx.beginPath();
+                        this.ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
+                        this.ctx.lineWidth = 1;
+                        this.ctx.setLineDash([2, 1]);
+                        this.ctx.moveTo(point.x, point.y);
+                        this.ctx.lineTo(point.x + (room.pX - point.x) / linelength * 50, point.y + (room.pY - point.y) / linelength * 50);
+                        this.ctx.stroke();
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(room.pX, room.pY);
+                        this.ctx.lineTo(room.pX - (room.pX - point.x) / linelength * 50, room.pY - (room.pY - point.y) / linelength * 50);
+                        this.ctx.stroke();
+                        this.ctx.setLineDash([]);
+
+                    } else {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(point.x, point.y);
+                        this.ctx.lineTo(room.pX, room.pY);
+                        this.ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
+                        this.ctx.lineWidth = 2;
+                        this.ctx.stroke();
+                    }
+
+                } else {
+                    //console.warn("Room not found for point:", pointId, "Room name:", this.getTag(pointId, "room"));
+                    //draw the room name
+                    this.ctx.font = "12px Arial";
+                    this.ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+                    this.ctx.fillText(this.getTag(pointId, "room"), point.x + 10, point.y - 10);
+                    //line to the room center
                     this.ctx.beginPath();
                     this.ctx.moveTo(point.x, point.y);
-                    this.ctx.lineTo(room.pX, room.pY);
+                    this.ctx.lineTo(point.x + 10, point.y - 10);
                     this.ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
                     this.ctx.lineWidth = 2;
                     this.ctx.stroke();
-
-                } else {
-                    console.warn("Room not found for point:", pointId, "Room name:", this.getTag(pointId, "room"));
                 }
             }
             if (this.getTag(pointId, "outside") == true) {
@@ -491,6 +539,13 @@ class RoutingGenerator {
                 this.ctx.stroke();
             }
 
+        }
+
+        if (this.overlayImg) {
+            // overlayImage is from black to white. black is transparent, white is opaque
+            this.ctx.globalCompositeOperation = "multiply"
+            this.ctx.drawImage(this.overlayImg, 0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.globalCompositeOperation = "source-over"
         }
     }
 
@@ -619,6 +674,7 @@ class RoutingGenerator {
             if (!["mouse", "pen"].includes(event.pointerType)) { return; }
             if (this.currentlyMovingView) return;
             if (event.button !== 0) return; // Only handle left mouse button
+            map.dragging.disable();
             event.preventDefault();
             event.stopPropagation();
 
@@ -685,6 +741,7 @@ class RoutingGenerator {
             if (!["mouse", "pen"].includes(event.pointerType)) { return; }
             if (this.currentlyMovingView) return;
             if (event.button !== 0) return; // Only handle left mouse button
+            map.dragging.enable();
             event.preventDefault();
             event.stopPropagation();
 
@@ -960,10 +1017,83 @@ class RoutingGenerator {
                     }
                     this.redrawCanvas();
                     break;
+                case "f":
+                    //change floor we are currently working on
+                    selected_floor = prompt("target Floor")
+                    setFloor(selected_floor);
+                    location.reload();
+                    break;
+                case "i":
+                    this.startAiGenerator();
                 default:
                     return; // Ignore other keys
             }
         });
+    }
+    async startAiGenerator() {
+        let bodyDiv = document.createElement("div");
+        //set style to styletext
+        let bodyStyle = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+        `
+        bodyDiv.style = bodyStyle;
+        let p = document.createElement("p");
+        p.innerText = "Generating doorways, this may take a while...\n";
+        p.style = "color: white; font-size: 20px; text-align: center;background-color: rgba(0, 0, 0, 0.8); padding: 20px; border-radius: 10px;";
+        bodyDiv.appendChild(p)
+        document.body.appendChild(bodyDiv);
+        let respObj = await fetch("http://localhost:3030/generateDoorways", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                building: this.building,
+                floor: this.floorData.id
+            })
+        })
+
+        //respObj is a stream, we need to read it
+        if (!respObj.ok) {
+            console.error("Error generating doorways:", respObj.statusText);
+            alert("Error generating doorways: " + respObj.statusText);
+            document.body.removeChild(bodyDiv);
+            return;
+        }
+        const reader = respObj.body.getReader();
+        const decoder = new TextDecoder();
+        let done = false;
+        while (!done) {
+            const { value, done: readerDone } = await reader.read();
+            done = readerDone;
+            if (value) {
+                const chunk = decoder.decode(value, { stream: !done });
+                p.innerText += chunk;
+                console.log("Received chunk:", chunk);
+                //scroll bodyDiv to bottom
+                bodyDiv.scrollTop = bodyDiv.scrollHeight;
+            }
+        }
+        p.innerText = "Doorway generation completed. Loading results...";
+        let imgUrl = `http://localhost:3030/getImages/${this.building}/${this.floorData.id}`;
+        let img = new Image();
+        img.src = imgUrl;
+        img.onload = () => {
+            this.overlayImg = img;
+            this.redrawCanvas();
+            document.body.removeChild(bodyDiv);
+            alert("Doorway generation completed. Check the canvas for results.");
+        };
     }
 }
 

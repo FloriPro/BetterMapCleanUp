@@ -107,6 +107,9 @@ def find_path(start, end, dontPointTags=[], dontLineTags=[]):
             if ignore:
                 continue
 
+            if n in route:
+                continue
+
             currentPath = route + [n]
             dst1 = points[n]
             dst2 = points[current]
@@ -125,10 +128,12 @@ def find_path(start, end, dontPointTags=[], dontLineTags=[]):
         routes.get(end, None)["length"] if end in routes else None,
     )
 
-
 startTime = time.time()
 path, length = find_path(
-    pointBefore, endPoint, ["outside", "private"], ["locked", "-accessible", "unlikely"]
+    pointBefore,
+    endPoint,
+    ["outside", "private"],
+    ["locked", "-accessible", "unlikely"],
 )
 endTime = time.time()
 print()
