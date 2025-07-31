@@ -265,6 +265,17 @@ class _getter {
         let data = await this.getData()
         return data.part[buildingid][part].rotation;
     }
+
+    async getPoly(buildingid, part) {
+        let data = await this.getData()
+        let { bottomLeft, bottomRight, topLeft, topRight } = data.part[buildingid][part].polyInfo.poly;
+        return [
+            [bottomLeft.lat, bottomLeft.lng],
+            [bottomRight.lat, bottomRight.lng],
+            [topRight.lat, topRight.lng],
+            [topLeft.lat, topLeft.lng]
+        ]
+    }
 }
 
 let getter = new _getter()
@@ -550,20 +561,21 @@ async function addBuildingPart(building, part, buildingparts, thisBuildingLayers
     partData.imgrotation = 0;
     partData.imgPos = partData.img;
     partData.imgSize = partData.size;
-    if (viewtype == "clear") {
-        //partData.imgrotation += await (await fetch(`/data/${building.code}/rotation/${part}.json`)).json()
-        partData.imgrotation += await getter.getImgRotation(building.code, part);
-        let oimg = partData.img;
-        partData.imgPos = partData.unrotateimg
+    // if (viewtype == "clear") {
+    //     //partData.imgrotation += await (await fetch(`/data/${building.code}/rotation/${part}.json`)).json()
+    //     partData.imgrotation += await getter.getImgRotation(building.code, part);
+    //     let oimg = partData.unrotateimg;
+    //     partData.imgPos = partData.unrotateimg
 
-        let rotated_width = oimg.width;
-        let rotated_height = oimg.height;
-        let mwh = rotated_width > rotated_height ? rotated_width : rotated_height;
-        //partData.unrotateimg.width > partData.unrotateimg.height ? partData.unrotateimg.width : partData.unrotateimg.height
-        partData.imgSize = (partData.unrotateimg.width > partData.unrotateimg.height ? partData.unrotateimg.width : partData.unrotateimg.height) / mwh * partData.size;
+    //     let rotated_width = oimg.width;
+    //     let rotated_height = oimg.height;
+    //     let mwh = rotated_width > rotated_height ? rotated_width : rotated_height;
+    //     //partData.unrotateimg.width > partData.unrotateimg.height ? partData.unrotateimg.width : partData.unrotateimg.height
+    //     partData.imgSize = (partData.unrotateimg.width > partData.unrotateimg.height ? partData.unrotateimg.width : partData.unrotateimg.height) / mwh * partData.size;
 
-    }
-    let poly1 = calculatePoly(partData.imgPos, partData.imgSize, center, partData.rotation - partData.imgrotation);
+    // }
+    // let poly1 = calculatePoly(partData.imgPos, partData.imgSize, center, partData.rotation - partData.imgrotation);
+    let poly1 = await getter.getPoly(building.code, part);
 
     currentOverlay = "LLQ";
     let overlayLLQ = L.imageOverlay.rotated(await imgCache.get(extremmeDownscaleImageUrl), poly1[3], poly1[2], poly1[0], {

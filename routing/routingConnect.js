@@ -78,6 +78,28 @@ function addRoutingData(routingLayer, floorData, lineColor, listener, connectedM
     }
 }
 
+L.Control.Layers.include({
+    getOverlays: function () {
+        // create hash to hold all layers
+        var control, layers;
+        layers = {};
+        control = this;
+
+        // loop thru all layers in control
+        control._layers.forEach(function (obj) {
+            var layerName;
+
+            // check if layer is an overlay
+            // get name of overlay
+            layerName = obj.name;
+            // store whether it's present on the map or not
+            return layers[layerName] = control._map.hasLayer(obj.layer);
+        });
+
+        return layers;
+    }
+});
+
 let legend = L.control({ position: 'bottomleft' });
 legend.onAdd = function (map) {
     let div = L.DomUtil.create('div', 'legend');
@@ -104,6 +126,8 @@ legend.addTo(map);
 // const loader = new BuildingMapLoader(map);
 // loader.load();
 
+const doSync = true;
+
 class BuildingMapLoader {
     constructor(map) {
         this.map = map;
@@ -129,6 +153,67 @@ class BuildingMapLoader {
 
         // Prepare a Leaflet layer‑control (will be populated later)
         this.controls = L.control.layers(null, {}, { collapsed: false });
+
+        if (doSync) {
+            this.bc = new BroadcastChannel("routing_sync");
+            this.bc.onmessage = this.recieveMessage.bind(this);
+            this.createListener();
+            this.movedBecauseOfSync = false;
+        }
+    }
+
+    recieveMessage(event) {
+        let data = event.data;
+        if (data.action === "updatePosition") {
+            if (this.remSync) {
+                console.log("Clearing previous sync timeout");
+                clearTimeout(this.remSync);
+            }
+            this.movedBecauseOfSync = true;
+            this.remSync = setTimeout(() => {
+                this.movedBecauseOfSync = false;
+                this.remSync = null;
+            }, 500);
+            map.setView([data.pos.lat, data.pos.lng], data.pos.zoom, {
+                animate: false
+            });
+            console.log("Updated position to:", data.pos);
+        }
+        if (data.action === "getPosition") {
+            let center = map.getCenter();
+            let zoom = map.getZoom();
+            this.updatePosition(zoom, center.lat, center.lng);
+        }
+    }
+
+    createListener() {
+        function upd() {
+            if (this.movedBecauseOfSync) {
+                return;
+            }
+            let center = map.getCenter();
+            let zoom = map.getZoom();
+            this.updatePosition(zoom, center.lat, center.lng);
+        }
+        map.on('moveend', upd.bind(this));
+        map.on('zoomend', upd.bind(this));
+        map.on('dragend', upd.bind(this));
+    }
+    updatePosition(zoom, lat, lng) {
+        if (this.movedBecauseOfSync) {
+            return;
+        }
+        let data = {
+            "action": "updatePosition",
+            "building": this.building,
+            "pos": {
+                "zoom": zoom,
+                "lat": lat,
+                "lng": lng
+            }
+        }
+
+        this.bc.postMessage(data);
     }
 
     /**
@@ -156,9 +241,15 @@ class BuildingMapLoader {
         this.map.removeControl(this.map.zoomControl);
 
         //mouse move listener
-        this.map.on('mousemove', (e) => {
+        /*this.map.on('mousemove', (e) => {
             this.mouseLatLng = e.latlng;
             this.mouseMove()
+        });*/
+        document.querySelector("#map").addEventListener("pointermove", (e) => {
+            //only mouse and pen
+            if (e.pointerType !== "mouse" && e.pointerType !== "pen") return;
+            this.mouseLatLng = this.map.mouseEventToLatLng(e);
+            this.mouseMove();
         });
 
         this.addKeyPressListener()
@@ -337,6 +428,56 @@ class BuildingMapLoader {
         });
     }
 
+    /**
+     * Reload routing data for all floors and update the display
+     */
+    async reloadRoutingData() {
+        console.log("Reloading routing data...");
+        // Reload routing data for all floors
+        this.floorLevels = await this.fetchRoutingForFloors(this.floorLevels, this.building);
+
+        let currentSelectedLayer = null;
+        // Check if a layer is currently selected
+        //getOverlays() // -> { Truck 1: true, Truck 2: false, Truck 3: false }
+        let ols = this.controls.getOverlays();
+        console.log("Current overlays:", ols);
+        for (let el in ols) {
+            if (ols[el]) {
+                currentSelectedLayer = el;
+            }
+        }
+        console.log("Current selected layer:", currentSelectedLayer);
+
+        // Reload connected markers
+        await this.loadConnectedMarkers();
+        this.repositionConnectedMarkers();
+        this.updateConnectedMarkers();
+
+        //clear the controls
+        this.controls.remove();
+        this.map.removeControl(this.controls);
+        this.controls = L.control.layers(null, {}, { collapsed: false });
+        this.map.addControl(this.controls);
+
+        // Clear existing layers
+        Object.values(this.routingLayers).forEach(layer => {
+            layer.routingLayer.clearLayers();
+        });
+        this.routingLayers = {};
+
+        // Rebuild controls with new data
+        this.buildControls();
+
+        //select the previously selected layer
+        for (let layer of this.controls._layers) {
+            if (layer.name === currentSelectedLayer) {
+                layer.layer.addTo(this.map);
+            }
+        }
+
+        console.log("Routing data reloaded successfully!");
+    }
+
     repositionConnectedMarkers() {
         let changed = false;
         this.connectedMarkers.forEach((markers) => {
@@ -376,6 +517,20 @@ class BuildingMapLoader {
                         this.map.removeLayer(this.markerConnectLine);
                         this.markerConnectLine = null;
                         this.markerConnectLineStartPoint = null;
+                    }
+                    break;
+                case 'r':
+                case 'R':
+                    console.log("Reloading routing data...");
+                    this.reloadRoutingData();
+                    break;
+                case 'o':
+                case 'O':
+                    //open: "http://localhost:3015/routing?floor={floor}&building={building}"
+                    for (let floor of this.floorLevels.sort((a, b) => this.levelsOrder.indexOf(b.level) - this.levelsOrder.indexOf(a.level))) {
+                        let url = `http://localhost:3015/routing?floor=${floor.level.replaceAll(" ", "+")}&building=${this.building}&synced=true`;
+                        console.log("Opening URL:", url);
+                        window.open(url, '_blank');
                     }
                     break;
             }
