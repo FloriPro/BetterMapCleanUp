@@ -12,13 +12,18 @@ def index():
     return """
     <a href="/placer">10: placer</a><br>
     <a href="/addPositions">11: Add Positions</a><br>
-    <a href="/viewer">Viewer</a>
+    <a href="/viewer">Viewer</a><br>
 
     <br>
     <br>
 
     <a href="/routing">1: Routing</a><br>
     <a href="/connect">2: Routing Connect</a><br>
+
+    <br>
+    <br>
+    
+    <a href="/mapViewer">Map Viewer</a>
 """
 
 
@@ -54,6 +59,12 @@ def routing():
 def connectRouting():
     # send file index.html
     return flask.send_file("routing/routingConnect.html")
+
+
+@app.route("/mapViewer/")
+def mapViewer():
+    # send file index.html
+    return flask.send_file("mapViewer/index.html")
 
 
 @app.route("/<path:path>")
@@ -97,8 +108,9 @@ def save(path):
     # create the directory if it does not exist
     os.makedirs(os.path.dirname(path), exist_ok=True)
     # save the jsonData
+    rdata = flask.request.data.decode("utf-8")
     with open(f"{path}", "w") as f:
-        f.write(flask.request.data.decode("utf-8"))
+        f.write(rdata)
     return "ok"
 
 

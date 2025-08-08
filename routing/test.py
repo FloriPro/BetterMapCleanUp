@@ -6,9 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 from scipy.fft import dst
 
 building = "bw0000"
-room = "g003000"
-
-with open(f"data/{building}/routing/{room}.json") as f:
+with open(f"data/{building}/routing/routingData.json") as f:
     data = json.load(f)
 
 lines = data["lines"]
@@ -128,6 +126,7 @@ def find_path(start, end, dontPointTags=[], dontLineTags=[]):
         routes.get(end, None)["length"] if end in routes else None,
     )
 
+
 startTime = time.time()
 path, length = find_path(
     pointBefore,
@@ -156,12 +155,15 @@ else:
 #     img = Image.open(f)
 #     img.show()
 
+room = "g003002"
+
 img = Image.open(f"data/{building}/clear/{room}.png")
 imgdraw = ImageDraw.Draw(img)
 
 with open(f"data/{building}/rooms/latlng/{room}.json") as f:
     rooms = json.load(f)
 
+addArrows = False
 
 ArrowSize = 100
 arrowEveryPixel = 70
@@ -178,36 +180,37 @@ for point in path[1:]:
 
     imgdraw.line((pointBeforeX, pointBeforeY, pointx, pointy), fill="blue", width=1)
 
-    # draw arrow
-    angle = math.atan2(pointBeforeX - pointx, pointBeforeY - pointy)
-    nowarrowImg = arrowImg.rotate(
-        math.degrees(angle),
-        expand=True,
-        center=(arrowImg.width // 2, arrowImg.height // 2),
-    )
-    # scale to 30x30px
-    nowarrowImg = nowarrowImg.resize(
-        (nowarrowImg.width // 5, nowarrowImg.height // 5), Image.LANCZOS
-    )
-
-    arrowCount = (
-        (pointx - pointBeforeX) ** 2 + (pointy - pointBeforeY) ** 2
-    ) ** 0.5 / arrowEveryPixel
-    if arrowCount < 1:
-        arrowCount = 1
-    else:
-        arrowCount = math.ceil(arrowCount)
-    for i in range(int(arrowCount)):
-        lerpX = pointBeforeX + (pointx - pointBeforeX) * (i / arrowCount)
-        lerpY = pointBeforeY + (pointy - pointBeforeY) * (i / arrowCount)
-        arrow_x = lerpX - nowarrowImg.width // 2
-        arrow_y = lerpY - nowarrowImg.height // 2
-        img.paste(
-            nowarrowImg,
-            (int(arrow_x), int(arrow_y)),
-            nowarrowImg,  # use alpha channel for transparency
+    if addArrows:
+        # draw arrow
+        angle = math.atan2(pointBeforeX - pointx, pointBeforeY - pointy)
+        nowarrowImg = arrowImg.rotate(
+            math.degrees(angle),
+            expand=True,
+            center=(arrowImg.width // 2, arrowImg.height // 2),
         )
-    del nowarrowImg
+        # scale to 30x30px
+        nowarrowImg = nowarrowImg.resize(
+            (nowarrowImg.width // 5, nowarrowImg.height // 5), Image.LANCZOS
+        )
+
+        arrowCount = (
+            (pointx - pointBeforeX) ** 2 + (pointy - pointBeforeY) ** 2
+        ) ** 0.5 / arrowEveryPixel
+        if arrowCount < 1:
+            arrowCount = 1
+        else:
+            arrowCount = math.ceil(arrowCount)
+        for i in range(int(arrowCount)):
+            lerpX = pointBeforeX + (pointx - pointBeforeX) * (i / arrowCount)
+            lerpY = pointBeforeY + (pointy - pointBeforeY) * (i / arrowCount)
+            arrow_x = lerpX - nowarrowImg.width // 2
+            arrow_y = lerpY - nowarrowImg.height // 2
+            img.paste(
+                nowarrowImg,
+                (int(arrow_x), int(arrow_y)),
+                nowarrowImg,  # use alpha channel for transparency
+            )
+        del nowarrowImg
 
     pointBeforeX = pointx
     pointBeforeY = pointy

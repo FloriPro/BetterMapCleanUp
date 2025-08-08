@@ -65,9 +65,14 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
 
      - `tags` to identify special information about the point
        point. (`{"tags": {"<tag>": "<value>"}}`)
+
        - `room: boolean` to link the point to a room in the building (uses the rName. as seen in "rooms/latlng/\<floorid\>").
        - `private: boolean` to mark the point as private or private.
        - `outside: boolean` to mark the point as outside.
+       - `stair: boolean` to mark the point as a stair.
+       - `elevator: boolean` to mark the point as an elevator.
+         - when `point.levelChange` is true, `stair` or `elevator` will be set to true.
+
      - A point can also include a `levelChange` property. This allows you to define stairs, elevators, or other transitions between floors.point. (`{"levelChange": [{levelId:"<level>", pointId: "<id>", "direction": "[up/down]"}]}`)
        - there is also a `levelChangeTodo: boolean` property that can be used to mark points that need to be defined later.
 
@@ -84,28 +89,58 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
    - dashed line: a line that is not accessible, e.g. a locked door or a wall.
    - two dashed lines: a line that is unlikely and should not be used for unnecessary routing.
    - pink line: line is not accessible for wheelchair users.
-   - arrow in both directions: the line is a level change point, e.g. a staircase or an elevator.
+   - green Point with `S` symbol: the point is a stair.
+   - orange Point with `E` symbol: the point is an elevator.
 
    #### keyboard shortcuts
 
-   - _Space_ or use any other mouse Button: To enable dragging the map while on the canvas
-   - _Mouse Drag_: While dragging on the canvas with the mouse, a line will be added to represent a route segment.
-   - _Shift + Mouse Drag_: If the cursor is near an existing point, it will move that point to the cursor position.
-   - _Ctrl + Mouse Drag_: If the cursor is near an existing _point_, it will remove that point. And all lines connected to it.<br> If it is near a _line_, it will remove that line.
-   - _m_: Mark the _point_ as a level change point. This will be used later to define stairs, when the other levels are added.
-   - _p_: Toggel the private state of the _Point_.
-   - _t_: Edit the tags of the _Point_.
-   - _e_: Add room id to the _Point_.
-   - _o_: Mark the _Point_ as Outside.
-   - _c_: mark all missing rooms.
-   - _a_: Toggel the accessibility of the _Line_.
-   - _l_: Toggel the locked state of the _Line_.
-   - _f_: Edit another plan level.
+   - `Space` or use any other mouse Button: To enable dragging the map while on the canvas
+   - `Mouse Drag`: While dragging on the canvas with the mouse, a line will be added to represent a route segment.
+   - `Shift + Mouse Drag`: If the cursor is near an existing point, it will move that point to the cursor position.
+   - `Ctrl + Mouse Dra`_: If the cursor is near an existing \_point_, it will remove that point. And all lines connected to it.<br> If it is near a _line_, it will remove that line.
+   - `m`: Mark the _point_ as a level change point. This will be used later to connect **stairs**, when the other levels are added.
+   - `M`: Mark the _point_ as a level change point. This will be used later to connect **elevators**, when the other levels are added.
+   - `p`: Toggel the private state of the _Point_.
+   - `t`: Edit the tags of the _Point_.
+   - `e`: Add room id to the _Point_.
+   - `o`: Mark the _Point_ as Outside.
+   - `c`: mark all missing rooms.
+   - `a`: Toggel the accessibility of the _Line_.
+   - `l`: Toggel the locked state of the _Line_.
+   - `f`: Edit another plan level.
 
 3. Open http://localhost:3015/ in your browser and select [`routing connect`](http://localhost:3015/connect).
-   - Still TODO
-   - Will let you connect multiple levels together, by seeing all the points where you marked a level change point.
 
-## Test Routing
+   - Enter the Building ID. The default is bw0000
+   - on the left side, you will see all the levels of the building. Click on a level to show the points and lines of that level in red.
 
-To test the routing, you can use the `test.py` script in the `routing` folder with `python .\routing\test.py "D 098" "G 024"`. There currently is no smart search, so the room names need to be exact.
+     - lines below the selected level will be shown in blue, if the level below has a 'Z' at the end, the line two levels below will be shown in dark blue.
+     - lines above the selected level will be shown in green, if the level above has a 'Z' at the end, the line two levels above will be shown in dark green.
+
+   - with the key `o`, you can open the routing editor tab for every level. The position of the current view will be synced along all tabs.
+
+     - after changing something in the routing editor, use `r` in the routing connect tab to refresh the view.
+
+   - All marked as level change points will be shown with the same icon as in the routing editor.
+
+     - all not connected points will have a pink background.
+
+   - click on a point to select it. Then click on another point to connect them with a line.
+
+     - press `Esc` to cancel the operation.
+
+     - when a point is selected, a yellow line will be drawn to the cursor position
+     - when a point is connected, a yellow line will be drawn between the two points.
+
+   - to delete a line, click on it.
+
+4. After you have connected all points run `python 14_generateRouting.py` to generate the routing data.
+
+# What To Upload
+
+- mapTiling/tiles -> tilesLQ/
+- data/app_data.json -> app_data.json
+- data/data.json -> data.json
+- routing/routingUpload/ -> routing/
+
+- _from lsf repo_ -> roomInfo/

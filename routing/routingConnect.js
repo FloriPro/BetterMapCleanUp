@@ -402,7 +402,7 @@ class BuildingMapLoader {
             let levelIndex0 = thislevels.indexOf(marker.points[0].level);
             let levelIndex1 = thislevels.indexOf(marker.points[1].level);
             let polylineMiddle
-            console.log(Math.abs(levelIndex0 - levelIndex1), levelIndex0, levelIndex1, thislevels);
+            // console.log(Math.abs(levelIndex0 - levelIndex1), levelIndex0, levelIndex1, thislevels);
             if (Math.abs(levelIndex0 - levelIndex1) > 1) {
                 polylineMiddle = L.polyline(marker.points, {
                     color: "#ffff00",
@@ -410,7 +410,7 @@ class BuildingMapLoader {
                     opacity: 1,
                     smoothFactor: 1
                 });
-                console.log("Adding middle polyline for levels", marker.points[0].level, marker.points[1].level);
+                // console.log("Adding middle polyline for levels", marker.points[0].level, marker.points[1].level);
                 this.routingLayers[thislevels[Math.min(levelIndex0, levelIndex1) + 1]].connectionLayer.addLayer(polylineMiddle);
             }
 
@@ -603,7 +603,7 @@ class BuildingMapLoader {
      */
     createTileLayer(level) {
         return L.tileLayer(
-            `https://raumplan.flulu.de/tilesLQ/${level}/{z}/{x}/{y}.png`,
+            `/mapTiling/tiles/${level}/{z}/{x}/{y}.png`,
             {
                 maxZoom: 30,
                 maxNativeZoom: 21,

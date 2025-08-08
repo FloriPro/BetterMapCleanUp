@@ -304,11 +304,13 @@ class storage {
         let db = await this.openDB();
         let tx = db.transaction("fastRoomData", "readwrite");
         let store = tx.objectStore("fastRoomData");
+        console.log("Promise created");
         await new Promise((resolve, reject) => {
             let req = store.put(data, `${building}_${floor}`);
             req.onsuccess = resolve;
             req.onerror = reject;
         });
+        console.log("Promise closed");
         db.close();
     }
 
@@ -619,6 +621,7 @@ function pxToLatLng(corners, x, y, canvasWidth, canvasHeight) {
 let fastRoomDownscaleBuilding = {
     "bw0000": 1,
     "bw1003": 3,
+    "bw7070": 2
 }
 
 
@@ -681,6 +684,17 @@ class RoutingGenerator {
             this.lines = this.headerRoutingData.lines;
             this.points = this.headerRoutingData.points;
             this.fastRoomConnections = this.headerRoutingData.fastRoomConnections || [];
+
+            this.migrateData();
+        }
+    }
+
+    migrateData() {
+        // if a point has a levelChangeTodo property, but no ("stair", "elevator") tag, add a "stair" tag
+        for (let pointId in this.points) {
+            if (this.points[pointId].levelChangeTodo && !this.getTag(pointId, "stair") && !this.getTag(pointId, "elevator")) {
+                this.setTag(pointId, "stair", true);
+            }
         }
     }
 
@@ -897,6 +911,9 @@ class RoutingGenerator {
     }
 
     redrawCanvas() {
+        if (this.currentDo == "highlightRoomAreas") {
+            return
+        }
         this.updateNearestPoint();
         let nearestLine = this.getNearestLine();
 
@@ -948,9 +965,41 @@ class RoutingGenerator {
             //draw one point
             this.ctx.drawPoint(point.x, point.y, 5, "blue");
             if (point.levelChangeTodo) {
-                this.rotateCtx(this.canvasRotation * (Math.PI / 180), point.x, point.y);
-                this.ctx.drawImage(this.arrowBothImg, point.x - 10, point.y - 10, 20, 20);
-                this.unrotateCtx();
+                //get tags
+                let tags = point.tags || {};
+                if (tags["stair"] != true && tags["elevator"] != true) {
+                    this.ctx.fillStyle = "red";
+                    this.ctx.font = "12px Arial";
+                    this.ctx.fillText("?", point.x + 10, point.y - 10);
+                }
+                else if (tags["stair"] == true) {
+                    //green background
+                    this.ctx.fillStyle = "green";
+                    this.ctx.beginPath();
+                    this.ctx.arc(point.x, point.y, 10, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.fillStyle = "white";
+                    this.ctx.font = "12px Arial";
+                    this.ctx.fillText("S", point.x - 5, point.y + 5);
+                }
+                else if (tags["elevator"] == true) {
+                    this.ctx.fillStyle = "orange";
+                    this.ctx.beginPath();
+                    this.ctx.arc(point.x, point.y, 10, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.fillStyle = "white";
+                    this.ctx.font = "12px Arial";
+                    this.ctx.fillText("E", point.x - 5, point.y + 5);
+                } else {
+                    console.log(tags)
+                    this.ctx.fillStyle = "red";
+                    this.ctx.beginPath();
+                    this.ctx.arc(point.x, point.y, 10, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.fillStyle = "white";
+                    this.ctx.font = "12px Arial";
+                    this.ctx.fillText("?", point.x - 5, point.y + 5);
+                }
             }
             if (this.getTag(pointId, "private") == true) {
                 this.rotateCtx(this.canvasRotation * (Math.PI / 180), point.x, point.y);
@@ -1134,6 +1183,45 @@ class RoutingGenerator {
         }
         line.tags[tag] = value;
         this.saveData();
+    }
+
+    recalculateRoomsMissingMarkers() {
+        // Clear existing markers
+        this.roomsMissingMarkers.forEach(marker => {
+            map.removeLayer(marker);
+        });
+        this.roomsMissingMarkers = [];
+
+        // Recalculate missing rooms
+        let roomsMissing = Object.keys(this.roomInfo.rooms);
+        for (let pointId in this.points) {
+            let rtag = this.getTag(pointId, "room");
+            if (rtag != undefined) {
+                roomsMissing = roomsMissing.filter(r => r != rtag);
+            }
+        }
+
+        // Add markers for missing rooms
+        for (let roomId of roomsMissing) {
+            let room = this.roomInfo.rooms[roomId];
+            if (room) {
+                let marker = L.marker([room.latlng.lat, room.latlng.lng], {
+                    title: room.rName,
+                    icon: L.divIcon({
+                        className: 'room-marker',
+                        html: `<div style="background-color: red; color: white; padding: 5px; border-radius: 5px; pointer-events: none;">${room.rName}</div>`,
+                        iconSize: [100, 30],
+                        iconAnchor: [50, 15]
+                    }),
+                    interactive: false // Make marker clickthrough
+                });
+
+                this.roomsMissingMarkers.push(marker);
+                map.addLayer(marker);
+            } else {
+                console.warn("Room not found:", roomId);
+            }
+        }
     }
 
 
@@ -1563,6 +1651,10 @@ class RoutingGenerator {
             if (event.key === "e") {
                 if (this.addRoomNearestRoom) {
                     this.setTag(this.addRoomTo, "room", this.addRoomNearestRoom.rName);
+                    // If roomsMissingMarkers are active, recalculate them
+                    if (this.roomsMissingMarkers && this.roomsMissingMarkers.length > 0) {
+                        this.recalculateRoomsMissingMarkers();
+                    }
                 }
                 this.addRoomNearestRoom = undefined;
                 this.currentDo = "none";
@@ -1573,9 +1665,25 @@ class RoutingGenerator {
         document.addEventListener("keypress", (event) => {
             switch (event.key) {
                 case "m":
+                    //stair
                     this.updateNearestPoint();
                     if (this.nearestPointId) {
-                        this.points[this.nearestPointId].levelChangeTodo = !this.points[this.nearestPointId].levelChangeTodo;
+                        let nval = this.getTag(this.nearestPointId, "stair") != true;
+                        this.points[this.nearestPointId].levelChangeTodo = nval;
+                        this.setTag(this.nearestPointId, "elevator", false);
+                        this.setTag(this.nearestPointId, "stair", nval);
+                    }
+                    this.redrawCanvas();
+                    this.saveData();
+                    break;
+                case "M":
+                    // elevator
+                    this.updateNearestPoint();
+                    if (this.nearestPointId) {
+                        let nval = this.getTag(this.nearestPointId, "elevator") != true;
+                        this.points[this.nearestPointId].levelChangeTodo = nval;
+                        this.setTag(this.nearestPointId, "stair", false);
+                        this.setTag(this.nearestPointId, "elevator", nval);
                     }
                     this.redrawCanvas();
                     this.saveData();
@@ -1673,6 +1781,15 @@ class RoutingGenerator {
                         this.calculateFastRoomAreas();
                     }
                     break;
+                case "H":
+                    if (!this.isUsingFastRoom) return;
+                    if (this.currentDo == "highlightRoomAreas") {
+                        this.currentDo = "none";
+                    } else if (this.currentDo == "none") {
+                        this.currentDo = "highlightRoomAreas";
+                        this.drawCurrentRoomAreas();
+                    }
+                    break;
                 case "C":
                     this.calculateFastRoomPoints();
                     break;
@@ -1681,6 +1798,34 @@ class RoutingGenerator {
             }
         });
     }
+    drawCurrentRoomAreas(){
+        if (!this.isUsingFastRoom) return;
+        const ctx = this.canvas.getContext("2d");
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+
+        // Assign a random color to each area
+        const areaColors = {};
+        for (let i in this.fastRoomData) {
+            // Generate a random pastel color
+            const hue = Math.floor(Math.random() * 360);
+            areaColors[i] = `hsl(${hue}, 70%, 80%)`;
+        }
+
+        // Draw each area
+        for (let i in this.fastRoomData) {
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = areaColors[i];
+            for (let idx of this.fastRoomData[i]) {
+                const x = idx % this.fastRoomImg.width;
+                const y = Math.floor(idx / this.fastRoomImg.width);
+                ctx.fillRect(x * this.fastRoomAreaDownscale, y * this.fastRoomAreaDownscale, this.fastRoomAreaDownscale, this.fastRoomAreaDownscale);
+            }
+            ctx.restore();
+        }
+    }
+
     calculateFastRoomPoints() {
         if (!this.isUsingFastRoom) return;
 
@@ -1828,42 +1973,78 @@ class RoutingGenerator {
         }
 
 
-        //angle score: the higher the score, the more the angles deviate from 0°, 90°, 180°, 270°
+        //angle score: the higher the score, the more the lines deviate from having 90° multiples between each other
         function calculateAngleScore(pointid) {
             let connectedLines = lines.filter(line => line.start === pointid || line.end === pointid);
-            if (connectedLines.length < 2) return 0; // Not enough lines to calculate angle difference
+            if (connectedLines.length < 2) return 0; // Need at least 2 lines to check angles between them
 
             let angles = connectedLines.map(calculateAngle);
             angles = angles.map(normalizeAngle);
             let totalScore = 0;
 
-            // Calculate how close each angle is to preferred angles (0°, 90°, 180°, 270°)
+            // Primary focus: ensure lines are at 90° multiples to each other
             for (let i = 0; i < angles.length; i++) {
                 for (let j = i + 1; j < angles.length; j++) {
-                    let angleDiff = Math.min(
-                        // the the score should be the lowest, the nearest the angles are to 0°, 90°, 180°, 270°
-                        Math.abs(angles[i] - angles[j]),
-                        Math.abs(angles[i] - (angles[j] + 90)) * 4,
-                        Math.abs(angles[i] - (angles[j] + 180)),
-                        Math.abs(angles[i] - (angles[j] + 270)) * 4
-                    );
-                    totalScore += angleDiff;
+                    let angleDiff = Math.abs(angles[i] - angles[j]);
+                    // Normalize angle difference to 0-180 range
+                    if (angleDiff > 180) angleDiff = 360 - angleDiff;
+                    
+                    // Find the closest multiple of 90° (0°, 90°, 180°)
+                    let deviationFrom0 = Math.abs(angleDiff - 0);    // Parallel lines
+                    let deviationFrom90 = Math.abs(angleDiff - 90);  // Perpendicular lines
+                    let deviationFrom180 = Math.abs(angleDiff - 180); // Opposite parallel lines
+                    
+                    let minDeviationFrom90Multiple = Math.min(deviationFrom0, deviationFrom90, deviationFrom180);
+                    
+                    // Weight this heavily as it's our primary goal
+                    totalScore += minDeviationFrom90Multiple * 2.0;
                 }
             }
+            
+            // Secondary focus: align individual lines to cardinal directions (0°, 90°, 180°, 270°)
+            // But weight this less than the inter-line relationships
+            for (let angle of angles) {
+                let minDistanceToCardinal = Math.min(
+                    Math.abs(angle - 0),
+                    Math.abs(angle - 90),
+                    Math.abs(angle - 180),
+                    Math.abs(angle - 270),
+                    Math.abs(angle - 360) // 360° is same as 0°
+                );
+                
+                // Also check wrapped angles for edge cases
+                minDistanceToCardinal = Math.min(
+                    minDistanceToCardinal,
+                    Math.abs((angle + 360) % 360 - 0),
+                    Math.abs((angle + 360) % 360 - 90),
+                    Math.abs((angle + 360) % 360 - 180),
+                    Math.abs((angle + 360) % 360 - 270)
+                );
+                
+                // Weight cardinal alignment less than inter-line orthogonality
+                totalScore += minDistanceToCardinal * 0.3;
+            }
+            
             return totalScore;
         }
 
-        // Optimize points to align with 90-degree angles
-        for (let bigIteration = 0; bigIteration < 3; bigIteration++) {
+        // Optimize points to align with 90-degree angles - slow gradient over longer period
+        for (let bigIteration = 0; bigIteration < 5; bigIteration++) { // Increased from 3 to 5 for more gradual optimization
             for (let point of points) {
-                for (let iteration = 0; iteration < 6; iteration++) {
+                for (let iteration = 0; iteration < 8; iteration++) { // Increased from 6 to 8 for finer steps
                     // Store original position
                     let originalX = this.points[point.id].x;
                     let originalY = this.points[point.id].y;
 
                     let currentScore = calculateAngleScore(point.id);
-                    let valchange = 5 * this.fastRoomAreaDownscale;
-                    valchange /= (1 + iteration + (6 * bigIteration)); // Reduce change with each iteration to avoid overshooting
+                    
+                    // Much smaller initial change for gradual optimization
+                    let valchange = 2 * this.fastRoomAreaDownscale; // Reduced from 5 to 2
+                    // More gradual reduction in change size
+                    valchange /= (1 + (iteration * 0.5) + (bigIteration * 2)); // Slower reduction rate
+                    
+                    // Ensure minimum movement threshold to avoid getting stuck
+                    valchange = Math.max(valchange, 0.1 * this.fastRoomAreaDownscale);
 
                     let changes = [
                         [originalX + valchange, originalY],
@@ -1874,7 +2055,12 @@ class RoutingGenerator {
                         [originalX - valchange, originalY - valchange],
                         [originalX + valchange, originalY - valchange],
                         [originalX - valchange, originalY + valchange],
-                        [originalX, originalY],
+                        // Add smaller diagonal movements for finer adjustment
+                        [originalX + valchange * 0.5, originalY + valchange * 0.5],
+                        [originalX - valchange * 0.5, originalY - valchange * 0.5],
+                        [originalX + valchange * 0.5, originalY - valchange * 0.5],
+                        [originalX - valchange * 0.5, originalY + valchange * 0.5],
+                        [originalX, originalY], // Keep original as option
                     ];
 
                     let bestChange = null;
@@ -1893,11 +2079,15 @@ class RoutingGenerator {
                     }
 
                     if (bestChange) {
-                        // Apply the best change and update original position for next iteration
-                        originalX = bestChange.x;
-                        originalY = bestChange.y;
+                        // Apply the best change and update position for next iteration
                         this.points[point.id].x = bestChange.x;
                         this.points[point.id].y = bestChange.y;
+                        
+                        // Early exit if improvement is very small (convergence)
+                        let improvement = currentScore - bestScore;
+                        if (improvement < 0.1) {
+                            break;
+                        }
                     } else {
                         // No improvement found, restore original position
                         this.points[point.id].x = originalX;
@@ -1905,6 +2095,11 @@ class RoutingGenerator {
                         break; // Exit early if no improvement
                     }
                 }
+            }
+            
+            // Log progress for debugging
+            if (bigIteration % 2 === 0) {
+                console.log(`Line angle optimization: completed ${bigIteration + 1}/5 major iterations`);
             }
         }
     }
@@ -1921,6 +2116,8 @@ class RoutingGenerator {
         // if a point only has two lines connected to it, and both lines almost have a 180°/0° angle, 
         // and both lines have a fastRoomConnection tag but dont have any other tags. 
         // remove the point, and only make one long line
+        let pointsToRemove = [];
+        
         for (let pointId in this.points) {
             let point = this.points[pointId];
             if (!point || !point.tags || !point.tags.fastRoomConnection || Object.keys(point.tags).length !== 1) continue;
@@ -1934,9 +2131,52 @@ class RoutingGenerator {
             let angle1 = calculateAngle.call(this, line1);
             let angle2 = calculateAngle.call(this, line2);
 
+            // Calculate the absolute difference between angles
             let angleDiff = Math.abs(angle1 - angle2);
+            // Normalize to 0-180 range
+            if (angleDiff > 180) angleDiff = 360 - angleDiff;
 
+            // If the angles are almost 180° apart (nearly straight line), merge them
+            const straightLineThreshold = 10; // degrees
+            if (Math.abs(angleDiff - 180) <= straightLineThreshold) {
+                // Get the other endpoints of the two lines
+                let otherPoint1 = line1.start === pointId ? line1.end : line1.start;
+                let otherPoint2 = line2.start === pointId ? line2.end : line2.start;
+
+                // Create a new line connecting the two other endpoints
+                let newLine = {
+                    start: otherPoint1,
+                    end: otherPoint2,
+                    tags: { fastRoomConnection: true }
+                };
+
+                // Store the changes to apply later (to avoid modifying arrays while iterating)
+                pointsToRemove.push({
+                    pointId: pointId,
+                    linesToRemove: [line1, line2],
+                    lineToAdd: newLine
+                });
+            }
         }
+
+        // Apply the changes
+        for (let change of pointsToRemove) {
+            // Remove the old lines
+            for (let lineToRemove of change.linesToRemove) {
+                let index = this.lines.indexOf(lineToRemove);
+                if (index !== -1) {
+                    this.lines.splice(index, 1);
+                }
+            }
+
+            // Add the new line
+            this.lines.push(change.lineToAdd);
+
+            // Remove the point
+            delete this.points[change.pointId];
+        }
+
+        console.log(`Optimized ${pointsToRemove.length} sub-lines`);
     }
 
     async calculateFastRoomAreas() {
@@ -2062,12 +2302,25 @@ class RoutingGenerator {
 
         console.log("saving fast room data...");
         let output = [];
-        for (let setKey of Object.keys(this.fastRoomData)) {
+        // Pre-allocate array size for better performance
+        let maxIndex = 0;
+        for (let setKey in this.fastRoomData) {
             for (let intkey of this.fastRoomData[setKey]) {
-                output[intkey] = setKey;
+                if (intkey > maxIndex) maxIndex = intkey;
             }
         }
-        console.log(output);
+        output = new Array(maxIndex + 1);
+        console.log("Pre-allocated output array of size:", output.length);
+        
+        // Use for...in instead of Object.keys() and batch processing
+        for (let setKey in this.fastRoomData) {
+            const setKeyNum = setKey; // Keep as string since that's what's expected
+            const currentSet = this.fastRoomData[setKey];
+            for (let intkey of currentSet) {
+                output[intkey] = setKeyNum;
+            }
+        }
+        console.log("Fast room data output length:", output.length);
         storage.setFastRoomData(output, this.building, this.floorData.id)
 
         this.recalcAreaAssociations();
