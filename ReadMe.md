@@ -144,3 +144,9 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
 - routing/routingUpload/ -> routing/
 
 - _from lsf repo_ -> roomInfo/
+
+# Map Viewer
+
+There exists under placer/viewer.[js/html] a map viewer implementation, but this is not performant.
+
+For better performance use the viewer in the `mapViewer/` directory. (you should change the maplibre style to not use osm tiles)

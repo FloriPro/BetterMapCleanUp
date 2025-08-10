@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Map Viewer</title>
+    <link rel="stylesheet" href="mapViewer.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"
+      crossorigin=""
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script defer src="mapViewer.js"></script>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="level-select-overlay">
+      <!-- Level selector buttons will be dynamically added here -->
+    </div>
+    <div id="search-overlay">
+      <!-- Search input and results will be dynamically added here -->
+    </div>
+    <div id="room-info-overlay">
+      <!-- Selected room information will be displayed here -->
+    </div>
+  </body>
+</html>

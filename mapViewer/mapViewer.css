@@ -1,0 +1,1029 @@
+/* Room info table styling */
+.room-info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    overflow: hidden;
+    font-size: 12px;
+}
+
+.room-info-table tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.room-info-table td {
+    padding: 8px 12px;
+    color: #fff;
+    vertical-align: top;
+}
+
+.room-info-table td:first-child {
+    font-weight: bold;
+    width: 140px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.room-info-table tr:last-child {
+    border-bottom: none;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: #1c1a16;
+    color: #ffffff;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+}
+
+#level-selector {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(28, 26, 22, 0.9);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #555;
+    z-index: 1000;
+    min-width: 250px;
+}
+
+#level-selector label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#level-dropdown {
+    width: 100%;
+    padding: 8px;
+    background-color: #333;
+    color: white;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+#level-stack-controls {
+    border-top: 1px solid #555;
+    padding-top: 10px;
+}
+
+#level-stack-controls label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+#level-stack-controls input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+#opacity-control {
+    margin-top: 10px;
+}
+
+#opacity-control label {
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+#opacity-slider {
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+/* Level Select Overlay Styles */
+#level-select-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.level-select-container {
+    background-color: rgba(40, 44, 52, 0.9);
+    border: 1.5px solid #49904a;
+    border-radius: 14px;
+    padding: 4px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.level-select-button {
+    width: 35px;
+    height: 28px;
+    margin: 3px 0;
+    background-color: rgba(40, 44, 52, 0.8);
+    border: none;
+    border-radius: 10px;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+}
+
+.level-select-button:hover {
+    background-color: rgba(80, 84, 92, 0.9);
+    transform: scale(1.05);
+}
+
+.level-select-button.selected {
+    background-color: #007acc;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 122, 204, 0.4);
+    transform: scale(1.1);
+}
+
+.level-select-button.has-selected-room {
+    border: 2px solid #ff4444;
+}
+
+.loading-level-button {
+    width: 40px;
+    height: 30px;
+    margin: 4px 0;
+    background-color: rgba(40, 44, 52, 0.8);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.loading-shimmer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(90deg, rgba(40, 44, 52, 0.8) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(40, 44, 52, 0.8) 100%);
+    animation: shimmer 1s infinite;
+    animation-timing-function: linear;
+    border-radius: 5px;
+    margin: 6px;
+    height: calc(100% - 12px);
+    transform: translateX(-150%);
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-120%);
+    }
+
+    100% {
+        transform: translateX(120%);
+    }
+}
+
+/* Search Overlay Styles */
+#search-overlay {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: calc(100vw - 140px);
+    /* Leave space for level selector */
+    pointer-events: auto;
+}
+
+.search-container {
+    background-color: rgba(40, 44, 52, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 7px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+    pointer-events: auto;
+}
+
+.search-container.expanded {
+    width: 220px;
+}
+
+.search-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto;
+    width: 100%;
+}
+
+.search-icon {
+    color: #ffffff;
+    font-size: 20px;
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 4px;
+    pointer-events: auto;
+}
+
+.search-input {
+    background: none;
+    border: none;
+    outline: none;
+    color: #ffffff;
+    font-size: 14px;
+    width: 100%;
+    padding: 8px 4px;
+    pointer-events: auto;
+    cursor: text;
+    min-height: 20px;
+}
+
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.search-results {
+    margin-top: 6px;
+    background-color: rgba(40, 44, 52, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    max-height: 50vh;
+    overflow-y: auto;
+    display: none;
+}
+
+.search-results.visible {
+    display: block;
+}
+
+.search-results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 5px;
+}
+
+.search-result-item {
+    background-color: rgba(60, 64, 72, 0.8);
+    border-radius: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    color: #ffffff;
+    text-align: left;
+    min-height: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.search-result-item:hover {
+    background-color: rgba(80, 84, 92, 0.9);
+    transform: scale(1.02);
+}
+
+.search-result-name {
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.search-result-building {
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+/* Room Info Overlay Styles */
+#room-info-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+
+
+    background: linear-gradient(135deg,
+            rgba(40, 44, 52, 0.97) 0%,
+            rgba(45, 49, 57, 0.95) 100%);
+
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px 12px 0 0;
+
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow:
+        0 -4px 20px rgba(0, 0, 0, 0.3),
+        0 -2px 10px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
+    overflow: hidden;
+}
+
+#room-info-overlay.visible {
+    transform: translateY(0);
+}
+
+.room-info-container {
+    padding: 10px;
+    position: relative;
+}
+
+.room-info-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.3) 50%,
+            transparent 100%);
+}
+
+.room-info-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0px;
+    padding-bottom: 0px;
+}
+
+.room-info-header.has-bottom-border {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.room-info-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.room-info-building {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.room-info-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.room-info-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 14px;
+    font-weight: 500;
+    backdrop-filter: blur(8px);
+    min-width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.room-info-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.room-info-btn:hover::before {
+    left: 100%;
+}
+
+.room-info-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.15),
+        0 2px 6px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.room-info-btn:active {
+    transform: translateY(-1px) scale(1);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.room-info-btn.active {
+    color: #4fa8d8;
+    background: rgba(79, 168, 216, 0.15);
+    border-color: rgba(79, 168, 216, 0.3);
+    box-shadow:
+        0 0 0 2px rgba(79, 168, 216, 0.2),
+        0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.room-info-btn.expand-btn {
+    background: rgba(34, 139, 34, 0.1);
+    border-color: rgba(34, 139, 34, 0.2);
+    color: rgba(144, 238, 144, 0.9);
+}
+
+.room-info-btn.expand-btn:hover {
+    background: rgba(34, 139, 34, 0.15);
+    border-color: rgba(34, 139, 34, 0.3);
+    color: rgba(144, 238, 144, 1);
+}
+
+.room-info-btn.close-btn {
+    background: rgba(220, 20, 60, 0.1);
+    border-color: rgba(220, 20, 60, 0.2);
+    color: rgba(255, 182, 193, 0.9);
+}
+
+.room-info-btn.close-btn:hover {
+    background: rgba(220, 20, 60, 0.15);
+    border-color: rgba(220, 20, 60, 0.3);
+    color: rgba(255, 182, 193, 1);
+}
+
+.room-info-details {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition:
+        max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.1s,
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+    padding: 0 16px;
+    margin-top: 0;
+}
+
+.room-info-details.expanded {
+    max-height: 400px;
+    overflow-y: auto;
+    opacity: 1;
+    transform: translateY(0);
+    margin-top: 12px;
+    transition:
+        max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s,
+        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s,
+        margin-top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.info-row {
+    display: flex;
+    margin-bottom: 10px;
+    opacity: 0;
+    transform: translateX(-20px);
+    animation: slideInRow 0.3s ease forwards;
+}
+
+.info-row:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.info-row:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.info-row:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.info-row:nth-child(4) {
+    animation-delay: 0.25s;
+}
+
+.info-row:nth-child(5) {
+    animation-delay: 0.3s;
+}
+
+.info-row:nth-child(n+6) {
+    animation-delay: 0.35s;
+}
+
+@keyframes slideInRow {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.info-label {
+    font-weight: 600;
+    margin-right: 8px;
+    min-width: 80px;
+}
+
+.info-value {
+    flex: 1;
+}
+
+/* Detailed Room Info Styles */
+.room-loading {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+    font-size: 14px;
+    position: relative;
+}
+
+.room-loading::before {
+    content: '';
+    width: 18px;
+    height: 18px;
+    border: 2px solid transparent;
+    border-top: 2px solid #4fa8d8;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    animation: spin 1s linear infinite;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.info-section-title {
+    font-weight: bold;
+    font-size: 14px;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    color: #4fa8d8;
+    opacity: 0;
+    transform: translateY(-10px);
+    animation: slideInTitle 0.4s ease forwards;
+    position: relative;
+    padding-bottom: 4px;
+}
+
+.info-section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: linear-gradient(90deg, #4fa8d8, transparent);
+    animation: expandUnderline 0.6s ease 0.2s forwards;
+}
+
+.info-section-title:first-of-type {
+    animation-delay: 0.2s;
+}
+
+.info-section-title:nth-of-type(2) {
+    animation-delay: 0.3s;
+}
+
+.info-section-title:nth-of-type(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes slideInTitle {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes expandUnderline {
+    to {
+        width: 40px;
+    }
+}
+
+
+.equipment-list {
+    margin-left: 12px;
+}
+
+.equipment-item {
+    margin-bottom: 4px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    transform: translateX(-20px);
+    animation: slideInRow 0.3s ease forwards;
+}
+
+.equipment-item:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.equipment-item:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.equipment-item:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.equipment-item:nth-child(4) {
+    animation-delay: 0.25s;
+}
+
+.equipment-item:nth-child(5) {
+    animation-delay: 0.3s;
+}
+
+.equipment-item:nth-child(6) {
+    animation-delay: 0.35s;
+}
+
+.equipment-item:nth-child(7) {
+    animation-delay: 0.4s;
+}
+
+.equipment-item:nth-child(8) {
+    animation-delay: 0.45s;
+}
+
+.equipment-item:nth-child(9) {
+    animation-delay: 0.5s;
+}
+
+.equipment-item:nth-child(10) {
+    animation-delay: 0.55s;
+}
+
+.equipment-item:nth-child(11) {
+    animation-delay: 0.6s;
+}
+
+.equipment-item:nth-child(12) {
+    animation-delay: 0.65s;
+}
+
+.equipment-item:nth-child(13) {
+    animation-delay: 0.7s;
+}
+
+.equipment-item:nth-child(14) {
+    animation-delay: 0.75s;
+}
+
+.equipment-item:nth-child(15) {
+    animation-delay: 0.8s;
+}
+
+.equipment-item:nth-child(16) {
+    animation-delay: 0.85s;
+}
+
+.equipment-item:nth-child(17) {
+    animation-delay: 0.9s;
+}
+
+.equipment-item:nth-child(18) {
+    animation-delay: 0.95s;
+}
+
+.equipment-item:nth-child(19) {
+    animation-delay: 1s;
+}
+
+.equipment-item:nth-child(20) {
+    animation-delay: 1.05s;
+}
+
+.equipment-item:nth-child(n+20) {
+    animation-delay: 0.35s;
+}
+
+.equipment-item strong {
+    color: #ffffff;
+}
+
+.info-note {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+.lsf-button {
+    background-color: #007acc;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.lsf-button:hover {
+    background-color: #005999;
+}
+
+/* Enhanced Room Marker Styles */
+.room-marker-container {
+    position: relative;
+    transform: scale(0.8);
+    opacity: 0;
+    transform-origin: bottom center;
+}
+
+.room-marker-container.room-marker-visible {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.room-marker-pin {
+    position: relative;
+    width: 40px;
+    height: 50px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    animation: marker-pulse 2s infinite;
+    transform-origin: bottom center;
+}
+
+.room-marker-head {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #ff4757 0%, #ff3838 100%);
+    border-radius: 50% 50% 50% 0;
+    border: 3px solid #ffffff;
+    box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
+    transform: rotate(-45deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.room-marker-head::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 71, 87, 0.3);
+    border-radius: 50% 50% 50% 0;
+    animation: marker-ripple 2s infinite;
+}
+
+.room-marker-icon {
+    transform: rotate(45deg);
+    font-size: 12px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    z-index: 1;
+    position: relative;
+    /* no word wrap, ellipsis */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.room-marker-label {
+    position: absolute;
+    bottom: 55px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px) scale(0.9);
+    transition: all 0.3s ease;
+}
+
+.room-marker-container:hover .room-marker-label {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.room-marker-container:hover .room-marker-head {
+    transform: rotate(-45deg) scale(1.1);
+    box-shadow: 0 6px 16px rgba(255, 71, 87, 0.5);
+}
+
+@keyframes marker-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes marker-ripple {
+    0% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+
+    100% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
+}
+
+/* Route Control Overlay Styles */
+#route-control-overlay {
+    position: absolute;
+    top: 50%;
+    right: 80px;
+    transform: translateY(-50%);
+    z-index: 1002;
+    display: none;
+}
+
+#route-control-overlay.visible {
+    display: block;
+}
+
+.route-control-container {
+    padding: 10px;
+}
+
+.route-control-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.route-control-header.has-bottom-border {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.route-control-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #ffffff;
+}
+
+.route-control-buttons{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.route-control-close {
+    background: rgba(220, 20, 60, 0.1);
+    border: 1px solid rgba(220, 20, 60, 0.2);
+    color: rgba(255, 182, 193, 0.9);
+    cursor: pointer;
+    padding: 4px 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.route-control-close:hover {
+    background: rgba(220, 20, 60, 0.15);
+    border-color: rgba(220, 20, 60, 0.3);
+    color: rgba(255, 182, 193, 1);
+}
+
+/* Collapse button for route info */
+.route-control-collapse {
+    background: rgba(79, 168, 216, 0.1);
+    border: 1px solid rgba(79, 168, 216, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    padding: 4px 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.route-control-collapse:hover {
+    background: rgba(79, 168, 216, 0.15);
+    border-color: rgba(79, 168, 216, 0.3);
+    color: rgba(255, 255, 255, 1);
+}
+
+.route-info {
+    margin-bottom: 12px;
+    gap: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+
+.route-info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    padding-right: 12px;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.route-info-item:last-child {
+    border-right: none;
+}
+
+.route-info-icon {
+    margin-right: 8px;
+    font-size: 14px;
+}
+
+.route-level-indicator {
+    display: inline-block;
+    padding: 2px 6px;
+    background: rgba(79, 168, 216, 0.2);
+    border: 1px solid rgba(79, 168, 216, 0.3);
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #4fa8d8;
+    margin-left: 4px;
+}
+
+.route-button {
+    background: #4fa8d8;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.route-button:hover {
+    background: #3d8bb0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(79, 168, 216, 0.3);
+}
+
+/* Route action buttons styling */
+.route-action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    justify-content: flex-end;
+}
