@@ -150,3 +150,5 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
 There exists under placer/viewer.[js/html] a map viewer implementation, but this is not performant.
 
 For better performance use the viewer in the `mapViewer/` directory. (you should change the maplibre style to not use osm tiles)
+
+I am sorry for whoever needs to read this, because i took the lmu_client_raumfinder repo and told copilot to rewrite the dart in javascript (95% ai, 5% me bugfixing).

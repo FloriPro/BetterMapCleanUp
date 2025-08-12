@@ -227,7 +227,7 @@ class SearchOverlay {
         // Create search icon
         const searchIcon = document.createElement('span');
         searchIcon.className = 'search-icon';
-        searchIcon.innerHTML = '🔍';
+        searchIcon.innerHTML = '🔍︎';
         searchIcon.style.cursor = 'pointer';
         const focusInput = () => {
             if (this.inputElement) {
@@ -915,7 +915,7 @@ class RouteControlOverlay {
     constructor(main) {
         this.main = main;
         this.overlayElement = document.getElementById('route-control-overlay');
-        this.isVisible = false;
+        this.currentStatus = undefined;
     }
 
     render(showInfo) {
@@ -941,24 +941,26 @@ class RouteControlOverlay {
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'route-control-buttons';
 
-        const collapseBtn = document.createElement('button');
-        collapseBtn.className = 'route-control-collapse';
-        collapseBtn.innerHTML = this.collapsed ? '↑' : '↓';
-        collapseBtn.title = this.collapsed ? 'Expand route info' : 'Collapse route info';
-        collapseBtn.addEventListener('click', () => {
-            this.collapsed = !this.collapsed;
-            this.render(this.showInfo);
-        });
+        if (showInfo) {
+            const collapseBtn = document.createElement('button');
+            collapseBtn.className = 'route-control-collapse room-info-btn';
+            collapseBtn.innerHTML = this.collapsed ? '↑' : '↓';
+            collapseBtn.title = this.collapsed ? 'Expand route info' : 'Collapse route info';
+            collapseBtn.addEventListener('click', () => {
+                this.collapsed = !this.collapsed;
+                this.render(this.showInfo);
+            });
+            buttonContainer.appendChild(collapseBtn);
+        }
 
         const closeBtn = document.createElement('button');
-        closeBtn.className = 'route-control-close';
+        closeBtn.className = 'route-control-close room-info-btn';
         closeBtn.innerHTML = '✕';
         closeBtn.addEventListener('click', () => {
             this.main.hideRoute();
         });
-
-        buttonContainer.appendChild(collapseBtn);
         buttonContainer.appendChild(closeBtn);
+
 
         header.appendChild(title);
         header.appendChild(buttonContainer);
@@ -974,14 +976,14 @@ class RouteControlOverlay {
             destinationItem.className = 'route-info-item';
             destinationItem.innerHTML = `
             <span class="route-info-icon">📍</span>
-            <span>To: ${this.routeInformation.room.name}</span>
+            <span>To: <span class="route-level-indicator">${this.routeInformation.room.name}</span></span>
         `;
 
             const buildingItem = document.createElement('div');
             buildingItem.className = 'route-info-item';
             buildingItem.innerHTML = `
             <span class="route-info-icon">🏢</span>
-            <span>${this.routeInformation.room.buildingName}</span>
+            <span class="route-level-indicator">${this.routeInformation.room.buildingName}</span>
         `;
 
             const levelItem = document.createElement('div');
@@ -1012,7 +1014,7 @@ class RouteControlOverlay {
             showRouteBtn.textContent = '🗺️ Show Route';
             showRouteBtn.addEventListener('click', () => {
                 this.main.fitRouteBounds();
-                buttonContainer.appendChild(settingsBtn);
+                // buttonContainer.appendChild(settingsBtn);
             });
 
             // Settings button
@@ -1038,6 +1040,76 @@ class RouteControlOverlay {
 
             this.container.appendChild(routeInfo);
             this.container.appendChild(actionBtns);
+
+
+            // Get the natural heights first
+            this.actionBtnsHeight = actionBtns.scrollHeight;
+            this.routeInfoHeight = routeInfo.scrollHeight;
+
+            setTimeout(() => {
+                this.actionBtnsHeight = actionBtns.scrollHeight;
+                this.routeInfoHeight = routeInfo.scrollHeight;
+            }, 10);
+            console.log("this.currentstatus", this.currentStatus)
+
+            if (this.currentStatus == "hidden" || this.currentStatus == undefined) {
+
+                // Set initial collapsed state
+                actionBtns.style.height = '0px';
+                actionBtns.style.margin = '0';
+                actionBtns.style.padding = '0';
+                actionBtns.style.overflow = 'hidden';
+                routeInfo.style.height = '0px';
+                routeInfo.style.margin = '0';
+                routeInfo.style.padding = '0';
+                routeInfo.style.overflow = 'hidden';
+
+                // Add transition classes
+                actionBtns.classList.add("animate-height");
+                routeInfo.classList.add("animate-height");
+
+                // Animate to full height
+                setTimeout(() => {
+                    this.actionBtnsHeight = actionBtns.scrollHeight;
+                    this.routeInfoHeight = routeInfo.scrollHeight;
+                    actionBtns.style.height = this.actionBtnsHeight + 'px';
+                    routeInfo.style.height = this.routeInfoHeight + 'px';
+                    actionBtns.style.margin = '';
+                    actionBtns.style.padding = '';
+                    routeInfo.style.margin = '';
+                    routeInfo.style.padding = '';
+
+                    this.currentStatus = "visible";
+
+                    // Clean up after animation
+                    setTimeout(() => {
+                        actionBtns.style.height = '';
+                        routeInfo.style.height = '';
+                        actionBtns.style.overflow = '';
+                        routeInfo.style.overflow = '';
+                        routeInfo.classList.remove("animate-height");
+                        actionBtns.classList.remove("animate-height");
+                    }, 300);
+                }, 10);
+            }
+        } else {
+            if (this.currentStatus == "visible") {
+                this.currentStatus = "hidden";
+
+                const placeholder = document.createElement('div');
+                placeholder.className = 'route-info-placeholder';
+                placeholder.style.transition = 'height 0.3s ease';
+                placeholder.style.height = this.routeInfoHeight + this.actionBtnsHeight + 'px';
+
+                setTimeout(() => {
+                    placeholder.style.height = '0px';
+                    placeholder.addEventListener('transitionend', () => {
+                        this.container.removeChild(placeholder);
+                    });
+                }, 10);
+
+                this.container.append(placeholder);
+            }
         }
 
         return this.container;
@@ -1045,33 +1117,6 @@ class RouteControlOverlay {
 }
 
 class Main {
-    setRouteStartPoint() {
-        // Show instruction to user
-        alert('Click on the map to set the route start point.');
-        // Listen for one click
-        const onClick = (e) => {
-            // Get clicked coordinates
-            const lngLat = e.lngLat;
-            // Save as custom start point
-            this.customRouteStart = { lat: lngLat.lat, lng: lngLat.lng };
-            // Remove listener and re-enable drag
-            this.map.off('click', onClick);
-            this.map.dragPan.enable();
-            // Optionally show marker
-            if (this.routeStartMarker) this.routeStartMarker.remove();
-            const markerEl = document.createElement('div');
-            markerEl.className = 'custom-route-start-marker';
-            markerEl.innerHTML = '🚩';
-            this.routeStartMarker = new maplibregl.Marker({ element: markerEl, anchor: 'bottom' })
-                .setLngLat([lngLat.lng, lngLat.lat])
-                .addTo(this.map);
-            // Optionally trigger route recalculation if destination is set
-            if (this.selectedRoom) {
-                this.routeToRoom(this.selectedRoom);
-            }
-        };
-        this.map.on('click', onClick);
-    }
     async init(map) {
         this.map = map;
         this.currentLevel = "EG";
@@ -1085,6 +1130,12 @@ class Main {
         this.routeControlOverlay = new RouteControlOverlay(this);
         this.roomInfoOverlay = new RoomInfoOverlay(this);
         this.settingsOverlay = new SettingsOverlay(this);
+        // When settings overlay closes, update routing if route is shown
+        this.settingsOverlay.onClose = () => {
+            if (this.showRoute && this.selectedRoom) {
+                this.routeToRoom(this.selectedRoom);
+            }
+        };
         this.settingsService = new SettingsService(this);
         // Route controls are now part of RoomInfoOverlay
 
@@ -1115,6 +1166,62 @@ class Main {
         });
     }
 
+    setRouteStartPoint() {
+
+        // Hide all UI overlays
+        const overlays = [
+            document.getElementById('level-select-overlay'),
+            document.getElementById('search-overlay'),
+            document.getElementById('route-control-overlay'),
+            document.getElementById('room-info-overlay'),
+            document.getElementById('settings-overlay')
+        ];
+        overlays.forEach(el => {
+            if (el) el.style.display = 'none';
+        });
+
+        // Show red border overlay over the map
+        let borderOverlay = document.getElementById('route-start-border-overlay');
+        if (!borderOverlay) {
+            borderOverlay = document.createElement('div');
+            borderOverlay.id = 'route-start-border-overlay';
+            const mapEl = document.getElementById('map');
+            if (mapEl) mapEl.appendChild(borderOverlay);
+        } else {
+            borderOverlay.style.display = 'block';
+        }
+
+        // Listen for one click
+        const onClick = (e) => {
+            // Get clicked coordinates
+            const lngLat = e.lngLat;
+            // Save as custom start point
+            this.customRouteStart = { lat: lngLat.lat, lng: lngLat.lng };
+            // Remove listener and re-enable drag
+            this.map.off('click', onClick);
+            this.map.dragPan.enable();
+            // Optionally show marker
+            if (this.routeStartMarker) this.routeStartMarker.remove();
+            const markerEl = document.createElement('div');
+            markerEl.className = 'custom-route-start-marker';
+            markerEl.innerHTML = '🚩';
+            this.routeStartMarker = new maplibregl.Marker({ element: markerEl, anchor: 'bottom' })
+                .setLngLat([lngLat.lng, lngLat.lat])
+                .addTo(this.map);
+            // Optionally trigger route recalculation if destination is set
+            if (this.selectedRoom) {
+                this.routeToRoom(this.selectedRoom);
+            }
+            // Restore UI overlays
+            overlays.forEach(el => {
+                if (el) el.style.display = '';
+            });
+            // Hide red border overlay
+            if (borderOverlay) borderOverlay.style.display = 'none';
+        };
+        this.map.on('click', onClick);
+    }
+
     saveStateToUrl() {
         const center = this.map.getCenter();
         const zoom = this.map.getZoom();
@@ -1132,6 +1239,18 @@ class Main {
         if (this.selectedRoom) {
             params.set('room', this.selectedRoom.name);
             params.set('building', this.selectedRoom.buildingName || '');
+        }
+
+        // Save routing state if active
+        if (this.showRoute && this.routeInformation) {
+            params.set('route', '1');
+            params.set('routeDest', this.routeInformation.room.name);
+            params.set('routeBuilding', this.routeInformation.room.buildingName || '');
+            // Save custom start point if set
+            if (this.customRouteStart) {
+                params.set('routeStartLat', this.customRouteStart.lat.toFixed(6));
+                params.set('routeStartLng', this.customRouteStart.lng.toFixed(6));
+            }
         }
 
         // Update URL without causing page reload
@@ -1168,6 +1287,31 @@ class Main {
         const buildingName = params.get('building');
         if (roomName && this.buildingData) {
             this.findAndSelectRoom(roomName, buildingName);
+        }
+
+        // Restore routing state if present
+        const routeEnabled = params.get('route') === '1';
+        const routeDest = params.get('routeDest');
+        const routeBuilding = params.get('routeBuilding');
+        const routeStartLat = params.get('routeStartLat');
+        const routeStartLng = params.get('routeStartLng');
+        if (routeEnabled && routeDest && this.buildingData) {
+            // Find destination room
+            this.findAndSelectRoom(routeDest, routeBuilding).then(found => {
+                if (found) {
+                    // Set custom start point if present
+                    if (routeStartLat && routeStartLng) {
+                        this.customRouteStart = {
+                            lat: parseFloat(routeStartLat),
+                            lng: parseFloat(routeStartLng)
+                        };
+                    } else {
+                        this.customRouteStart = null;
+                    }
+                    // Route to room
+                    this.routeToRoom(this.selectedRoom);
+                }
+            });
         }
     }
 
@@ -1255,6 +1399,10 @@ class Main {
                 source: level,
                 layout: {
                     visibility: 'none'
+                },
+                paint: {
+                    'raster-brightness-min': 1,
+                    'raster-brightness-max': 0.15
                 }
             });
         }
@@ -1286,9 +1434,12 @@ class Main {
                     const isVisible = routeLevel === this.currentLevel;
 
                     this.map.setPaintProperty(layer.id, 'line-color',
-                        isVisible ? '#0066cc' : 'rgba(105, 112, 132, 0.6)');
+                        isVisible ? '#0066cc' : 'rgba(189, 197, 216, 0.81)');
+
+                    // add line border
+
                     this.map.setPaintProperty(layer.id, 'line-opacity',
-                        isVisible ? 1 : 0.6);
+                        isVisible ? 1 : 0.76); // Higher opacity for non-current levels
                 }
             }
         });
@@ -1646,6 +1797,7 @@ class Main {
         routeSegments.forEach((segment, index) => {
             const sourceId = `route-${index}`;
             const layerId = `route-layer-${index}`;
+            const whiteLayerId = `route-white-layer-${index}`;
             const clickLayerId = `route-click-layer-${index}`;
 
             // Remove existing layers and source if present
@@ -1673,7 +1825,22 @@ class Main {
                 }
             });
 
-            const isCurrentLevel = segment.level === this.currentLevel;
+            // const isCurrentLevel = segment.level === this.currentLevel;
+
+            this.map.addLayer({
+                id: whiteLayerId,
+                type: 'line',
+                source: sourceId,
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': '#ffffff',
+                    'line-width': 7,
+                    'line-opacity': 1
+                }
+            });
             this.map.addLayer({
                 id: layerId,
                 type: 'line',
@@ -1683,9 +1850,9 @@ class Main {
                     'line-cap': 'round'
                 },
                 paint: {
-                    'line-color': isCurrentLevel ? '#0066cc' : 'rgba(105, 112, 132, 0.6)',
+                    'line-color': '#0000ff',
                     'line-width': 4,
-                    'line-opacity': isCurrentLevel ? 1 : 0.6
+                    'line-opacity': 1
                 }
             });
 
@@ -1706,11 +1873,14 @@ class Main {
                 interactive: true
             });
 
+
             // Add click event to the wide layer
             this.map.on('click', clickLayerId, (e) => {
                 this.updateLevel(segment.level);
             });
         });
+
+        this.updateRouteVisibility();
 
         // Add level change markers
         for (let i = 1; i < routeSegments.length; i++) {
@@ -1780,8 +1950,8 @@ class Main {
 
         // Icon (SVG above text)
         const iconDiv = document.createElement('div');
-        iconDiv.style.width = '22px';
-        iconDiv.style.height = '22px';
+        iconDiv.style.width = '18px';
+        iconDiv.style.height = '18px';
         iconDiv.style.display = 'flex';
         iconDiv.style.alignItems = 'center';
         iconDiv.style.justifyContent = 'center';
@@ -1794,13 +1964,13 @@ class Main {
 
         // Label (below icon, with background and border)
         const labelDiv = document.createElement('div');
-        labelDiv.style.fontSize = '12px';
+        labelDiv.style.fontSize = '10px';
         labelDiv.style.fontWeight = 'bold';
         labelDiv.style.color = '#ff9800';
         labelDiv.style.background = '#ffffffd9';
         labelDiv.style.borderRadius = '6px';
         labelDiv.style.border = '1px solid #ff9800';
-        labelDiv.style.padding = '2px 8px';
+        labelDiv.style.padding = '0px 4px';
         labelDiv.style.marginTop = '2px';
         labelDiv.textContent = label;
         markerEl.appendChild(labelDiv);
@@ -1897,6 +2067,7 @@ class Main {
             if (
                 layer.id.startsWith('route-layer-') ||
                 layer.id.startsWith('route-click-layer-') ||
+                layer.id.startsWith('route-white-layer-') ||
                 layer.id === 'route-start-marker'
             ) {
                 this.map.removeLayer(layer.id);
@@ -1930,6 +2101,9 @@ class Main {
         // Force room info overlay to update button color/logic
         if (this.roomInfoOverlay && this.roomInfoOverlay.currentRoom) {
             this.roomInfoOverlay.render();
+            setTimeout(() => {
+                this.routeControlOverlay.currentStatus = "hidden";
+            }, 20);
         }
     }
 
@@ -2106,6 +2280,7 @@ class SettingsOverlay {
         this.main = main;
         this.overlayId = 'settings-overlay';
         this.rendered = false;
+        this.onClose = null; // Callback for when overlay is closed
     }
 
     show() {
@@ -2123,6 +2298,9 @@ class SettingsOverlay {
         if (overlay) {
             overlay.style.display = 'none';
         }
+        if (typeof this.onClose === 'function') {
+            this.onClose();
+        }
     }
 
     render() {
@@ -2132,37 +2310,17 @@ class SettingsOverlay {
         } else {
             overlay = document.createElement('div');
             overlay.id = this.overlayId;
-            overlay.style.position = 'fixed';
-            overlay.style.top = '0';
-            overlay.style.left = '0';
-            overlay.style.width = '100vw';
-            overlay.style.height = '100vh';
-            overlay.style.background = 'rgba(30,30,40,0.96)';
-            overlay.style.zIndex = '2000';
-            overlay.style.display = 'none';
-            overlay.style.justifyContent = 'center';
-            overlay.style.alignItems = 'center';
+            overlay.className = 'settings-overlay';
             document.body.appendChild(overlay);
         }
 
         const container = document.createElement('div');
         container.className = 'settings-container';
-        container.style.background = '#222a';
-        container.style.borderRadius = '16px';
-        container.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
-        container.style.padding = '32px 28px 24px 28px';
-        container.style.minWidth = '320px';
-        container.style.maxWidth = '420px';
-        container.style.color = '#fff';
-        container.style.position = 'relative';
 
         // Title
         const title = document.createElement('div');
         title.className = 'settings-title';
         title.textContent = 'Settings';
-        title.style.fontSize = '1.5em';
-        title.style.fontWeight = '700';
-        title.style.marginBottom = '18px';
         container.appendChild(title);
 
         // Settings grouped by category
@@ -2177,10 +2335,6 @@ class SettingsOverlay {
             const catTitle = document.createElement('div');
             catTitle.className = 'settings-category';
             catTitle.textContent = cat;
-            catTitle.style.fontWeight = '600';
-            catTitle.style.fontSize = '1.08em';
-            catTitle.style.marginTop = '18px';
-            catTitle.style.marginBottom = '8px';
             container.appendChild(catTitle);
             for (const { key, cfg } of grouped[cat]) {
                 container.appendChild(this.renderSetting(key, cfg));
@@ -2192,16 +2346,6 @@ class SettingsOverlay {
         closeBtn.className = 'settings-close-btn';
         closeBtn.innerHTML = '✕';
         closeBtn.title = 'Close';
-        closeBtn.style.position = 'absolute';
-        closeBtn.style.top = '18px';
-        closeBtn.style.right = '18px';
-        closeBtn.style.background = '#222a';
-        closeBtn.style.color = '#fff';
-        closeBtn.style.border = 'none';
-        closeBtn.style.borderRadius = '8px';
-        closeBtn.style.fontSize = '1.2em';
-        closeBtn.style.cursor = 'pointer';
-        closeBtn.style.boxShadow = '0 1px 4px rgba(0,0,0,0.10)';
         closeBtn.onclick = () => this.hide();
         container.appendChild(closeBtn);
 
@@ -2212,17 +2356,11 @@ class SettingsOverlay {
     renderSetting(key, cfg) {
         const row = document.createElement('div');
         row.className = 'settings-row';
-        row.style.display = 'flex';
-        row.style.alignItems = 'center';
-        row.style.marginBottom = '14px';
 
         // Label
         const label = document.createElement('div');
         label.className = 'settings-label';
         label.textContent = cfg.name;
-        label.style.flex = '1';
-        label.style.fontWeight = '500';
-        label.style.fontSize = '1em';
         row.appendChild(label);
 
         // Control
@@ -2230,12 +2368,18 @@ class SettingsOverlay {
         if (cfg.type === 'bool') {
             control = document.createElement('input');
             control.type = 'checkbox';
+            control.className = 'slider-switch';
             control.checked = this.main.settingsService.getValue(key);
-            control.style.transform = 'scale(1.3)';
-            control.style.marginLeft = '12px';
             control.onchange = (e) => {
                 this.main.settingsService.save(key, control.checked);
             };
+            // Clicking row toggles checkbox
+            row.addEventListener('click', (e) => {
+                if (e.target !== control) {
+                    control.checked = !control.checked;
+                    control.dispatchEvent(new Event('change'));
+                }
+            });
         } else if (cfg.type === 'string' && cfg.options) {
             control = document.createElement('select');
             for (const opt of cfg.options) {
@@ -2245,14 +2389,15 @@ class SettingsOverlay {
                 control.appendChild(option);
             }
             control.value = this.main.settingsService.getValue(key);
-            control.style.marginLeft = '12px';
-            control.style.padding = '4px 8px';
-            control.style.borderRadius = '6px';
-            control.style.background = '#333';
-            control.style.color = '#fff';
             control.onchange = (e) => {
                 this.main.settingsService.save(key, control.value);
             };
+            // Clicking row focuses select
+            row.addEventListener('click', (e) => {
+                if (e.target !== control) {
+                    control.focus();
+                }
+            });
         }
         row.appendChild(control);
 
@@ -2261,10 +2406,6 @@ class SettingsOverlay {
             const desc = document.createElement('div');
             desc.className = 'settings-desc';
             desc.textContent = cfg.description;
-            desc.style.fontSize = '0.92em';
-            desc.style.color = 'rgba(255,255,255,0.65)';
-            desc.style.marginLeft = '12px';
-            desc.style.flex = '2';
             row.appendChild(desc);
         }
         return row;
