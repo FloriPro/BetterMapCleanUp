@@ -621,7 +621,8 @@ function pxToLatLng(corners, x, y, canvasWidth, canvasHeight) {
 let fastRoomDownscaleBuilding = {
     "bw0000": 1,
     "bw1003": 3,
-    "bw7070": 2
+    "bw7070": 2,
+    "bw0420": 3,
 }
 
 
@@ -1776,12 +1777,14 @@ class RoutingGenerator {
                 case "i":
                     this.startAiGenerator();
                 case "F":
+                    // toggle fast room usage
                     this.isUsingFastRoom = !this.isUsingFastRoom;
                     if (this.isUsingFastRoom) {
                         this.calculateFastRoomAreas();
                     }
                     break;
                 case "H":
+                    // hightlight fast room areas
                     if (!this.isUsingFastRoom) return;
                     if (this.currentDo == "highlightRoomAreas") {
                         this.currentDo = "none";
@@ -1791,6 +1794,7 @@ class RoutingGenerator {
                     }
                     break;
                 case "C":
+                    // calculate fast room points
                     this.calculateFastRoomPoints();
                     break;
                 default:
@@ -1798,7 +1802,7 @@ class RoutingGenerator {
             }
         });
     }
-    drawCurrentRoomAreas(){
+    drawCurrentRoomAreas() {
         if (!this.isUsingFastRoom) return;
         const ctx = this.canvas.getContext("2d");
         const width = this.canvas.width;
@@ -1988,19 +1992,19 @@ class RoutingGenerator {
                     let angleDiff = Math.abs(angles[i] - angles[j]);
                     // Normalize angle difference to 0-180 range
                     if (angleDiff > 180) angleDiff = 360 - angleDiff;
-                    
+
                     // Find the closest multiple of 90° (0°, 90°, 180°)
                     let deviationFrom0 = Math.abs(angleDiff - 0);    // Parallel lines
                     let deviationFrom90 = Math.abs(angleDiff - 90);  // Perpendicular lines
                     let deviationFrom180 = Math.abs(angleDiff - 180); // Opposite parallel lines
-                    
+
                     let minDeviationFrom90Multiple = Math.min(deviationFrom0, deviationFrom90, deviationFrom180);
-                    
+
                     // Weight this heavily as it's our primary goal
                     totalScore += minDeviationFrom90Multiple * 2.0;
                 }
             }
-            
+
             // Secondary focus: align individual lines to cardinal directions (0°, 90°, 180°, 270°)
             // But weight this less than the inter-line relationships
             for (let angle of angles) {
@@ -2011,7 +2015,7 @@ class RoutingGenerator {
                     Math.abs(angle - 270),
                     Math.abs(angle - 360) // 360° is same as 0°
                 );
-                
+
                 // Also check wrapped angles for edge cases
                 minDistanceToCardinal = Math.min(
                     minDistanceToCardinal,
@@ -2020,11 +2024,11 @@ class RoutingGenerator {
                     Math.abs((angle + 360) % 360 - 180),
                     Math.abs((angle + 360) % 360 - 270)
                 );
-                
+
                 // Weight cardinal alignment less than inter-line orthogonality
                 totalScore += minDistanceToCardinal * 0.3;
             }
-            
+
             return totalScore;
         }
 
@@ -2037,12 +2041,12 @@ class RoutingGenerator {
                     let originalY = this.points[point.id].y;
 
                     let currentScore = calculateAngleScore(point.id);
-                    
+
                     // Much smaller initial change for gradual optimization
                     let valchange = 2 * this.fastRoomAreaDownscale; // Reduced from 5 to 2
                     // More gradual reduction in change size
                     valchange /= (1 + (iteration * 0.5) + (bigIteration * 2)); // Slower reduction rate
-                    
+
                     // Ensure minimum movement threshold to avoid getting stuck
                     valchange = Math.max(valchange, 0.1 * this.fastRoomAreaDownscale);
 
@@ -2082,7 +2086,7 @@ class RoutingGenerator {
                         // Apply the best change and update position for next iteration
                         this.points[point.id].x = bestChange.x;
                         this.points[point.id].y = bestChange.y;
-                        
+
                         // Early exit if improvement is very small (convergence)
                         let improvement = currentScore - bestScore;
                         if (improvement < 0.1) {
@@ -2096,7 +2100,7 @@ class RoutingGenerator {
                     }
                 }
             }
-            
+
             // Log progress for debugging
             if (bigIteration % 2 === 0) {
                 console.log(`Line angle optimization: completed ${bigIteration + 1}/5 major iterations`);
@@ -2117,7 +2121,7 @@ class RoutingGenerator {
         // and both lines have a fastRoomConnection tag but dont have any other tags. 
         // remove the point, and only make one long line
         let pointsToRemove = [];
-        
+
         for (let pointId in this.points) {
             let point = this.points[pointId];
             if (!point || !point.tags || !point.tags.fastRoomConnection || Object.keys(point.tags).length !== 1) continue;
@@ -2311,7 +2315,7 @@ class RoutingGenerator {
         }
         output = new Array(maxIndex + 1);
         console.log("Pre-allocated output array of size:", output.length);
-        
+
         // Use for...in instead of Object.keys() and batch processing
         for (let setKey in this.fastRoomData) {
             const setKeyNum = setKey; // Keep as string since that's what's expected
