@@ -25,7 +25,9 @@ let apiUrls = {
     getRoom: (buildingId) => `/data/roomInfo/${buildingId}.json`,
     getAppData: () => "/data/app_data.json",
     getRoutingData: (buildingId) => `/routing/routingUpload/${buildingId}.json`,
-    getTileMap: (level) => `/mapTiling/tiles/${level}/{z}/{x}/{y}.png`
+    getTileMap: (level) => `/mapTiling/tiles/${level}/{z}/{x}/{y}.png`,
+    getMarker: (type) => "/data/roomInfo/typeSearch/" + type + ".json",
+    getWCIcon: () => "/mapViewer/wc-Icon.png",
 }
 
 if (location.hostname == "raumplan.flulu.de") {
@@ -33,7 +35,9 @@ if (location.hostname == "raumplan.flulu.de") {
         getRoom: (buildingId) => `https://raumplan.flulu.de/roomInfo/${buildingId}.json`,
         getAppData: () => "https://raumplan.flulu.de/app_data.json",
         getRoutingData: (buildingId) => `https://raumplan.flulu.de/routing/${buildingId}.json`,
-        getTileMap: (level) => `https://raumplan.flulu.de/tilesLQ/${level}/{z}/{x}/{y}.png`
+        getTileMap: (level) => `https://raumplan.flulu.de/tilesLQ/${level}/{z}/{x}/{y}.png`,
+        getMarker: (type) => null,
+        getWCIcon: () => null,
     }
 }
 
@@ -159,19 +163,223 @@ class RoomApiClient {
 }
 
 class SearchRoomResponse {
-    constructor(name, buildingName, latLng, level, originalRoom, buildingId, roomId) {
+    constructor(name, buildingName, latLng, level, originalRoom, buildingId, roomId, similarity) {
         this.name = name;
         this.buildingName = buildingName;
         this.latLng = latLng;
         this.level = level;
         this.originalRoom = originalRoom;
+        this.similarity = similarity;
         this.buildingId = buildingId;
         this.roomId = roomId;
     }
 }
 
+class SearchHandler {
+    constructor(main) {
+        this.main = main;
+
+        this.ignoreText = ["-", "/", "(", ")", ".", ",", "'", '"'];
+        this.replaceText = {
+            "ä": "a",
+            "ö": "o",
+            "ü": "u",
+            "ß": "ss"
+        };
+    }
+
+    normalizeText(text) {
+        let normalized = text.toLowerCase();
+        for (const [key, value] of Object.entries(this.replaceText)) {
+            normalized = normalized.replaceAll(key, value);
+        }
+        normalized = normalized.replaceAll("  ", " ");
+        for (let char of this.ignoreText) {
+            normalized = normalized.replaceAll(char, "");
+        }
+        return normalized;
+    }
+
+    normalizeNoSpaceText(text) {
+        let normalized = this.normalizeText(text);
+        return this.removeSpace(normalized);
+    }
+
+    removeSpace(text) {
+        return text.replace(/\s+/g, "");
+    }
+
+    makeResponse(room, buildingData, part, buildingId, similarity) {
+        const response = new SearchRoomResponse(
+            room.rName,
+            buildingData.displayName,
+            room.latlng,
+            part.level,
+            room,
+            buildingId,
+            room.roomid,
+            similarity
+        );
+        return response;
+    }
+
+    count(string, o) {
+        //count occurrences of o in string
+        return (string.match(new RegExp(o, "g")) || []).length;
+    }
+
+    levenshteinDistance(a, b) {
+        const matrix = [];
+
+        // Initialize the matrix
+        for (let i = 0; i <= a.length; i++) {
+            matrix[i] = [i];
+        }
+        for (let j = 0; j <= b.length; j++) {
+            matrix[0][j] = j;
+        }
+
+        // Compute the distances
+        for (let i = 1; i <= a.length; i++) {
+            for (let j = 1; j <= b.length; j++) {
+                if (a[i - 1] === b[j - 1]) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1, // substitution
+                        Math.min(
+                            matrix[i][j - 1] + 1, // insertion
+                            matrix[i - 1][j] + 1  // deletion
+                        )
+                    );
+                }
+            }
+        }
+
+        return matrix[a.length][b.length];
+    }
+
+    similar(a, b) {
+        let maxLen = Math.max(a.length, b.length);
+        let distance = this.levenshteinDistance(a, b);
+        return (1 - distance / maxLen);
+    }
+
+    similarStart(a, b) {
+        let minLen = Math.min(a.length, b.length);
+        a = a.substring(0, minLen);
+        b = b.substring(0, minLen);
+        return this.similar(a, b) - 0.1;
+    }
+
+    searchRoom(value) {
+        if (!this.main.buildingData) {
+            console.log('Building data not loaded yet');
+            return;
+        }
+
+        const normalizedValue = this.normalizeText(value);
+        console.log("searchRoom:", normalizedValue);
+
+        if (normalizedValue.length === 0) {
+            return [];
+        }
+
+
+        let checks = [
+            {
+                "type": "room",
+                "room": this.removeSpace(normalizedValue)
+            },
+            {
+                "type": "building",
+                "building": this.removeSpace(normalizedValue)
+            },
+        ]
+
+        // let maybeRoomNumber = normalizedValue.match(/\b([a-z]?\d{1,5}[a-z]?)\b/i);
+        let maybeRoomNumber = normalizedValue.match(/\b([a-z]{0,2}\d{2,5}[a-z]?)\b/i);
+        if (maybeRoomNumber) {
+            maybeRoomNumber = maybeRoomNumber[0].trim();
+            let buildingName = normalizedValue.replace(maybeRoomNumber, "").trim();
+            if (buildingName && buildingName.length >= 2) {
+                checks.push({
+                    "type": "buildingAndRoom",
+                    "building": this.removeSpace(buildingName),
+                    "room": this.removeSpace(maybeRoomNumber)
+                });
+            } else {
+                checks.push({
+                    "type": "room",
+                    "room": this.removeSpace(maybeRoomNumber),
+                    "subtr": !(buildingName.length >= 2)
+                });
+            }
+        }
+
+        console.log("checks", checks);
+
+        const filteredRooms = [];
+
+        const normalizedChecks = checks.map(check => {
+            return {
+                ...check,
+                normalizedRoom: check.room ? this.normalizeNoSpaceText(check.room) : null,
+                normalizedBuilding: check.building ? this.normalizeNoSpaceText(check.building) : null,
+            };
+        });
+
+        for (const [buildingId, building] of Object.entries(this.main.buildingData.part)) {
+            const buildingData = building.building;
+            const normalizedBuildingName = this.normalizeText(buildingData.displayName);
+
+            for (const part of Object.values(building.parts || {})) {
+                for (const room of Object.values(part.rooms || {})) {
+                    const normalizedRoomName = this.normalizeText(room.rName);
+
+                    for (const check of normalizedChecks) {
+                        let similarity = 0;
+
+                        if (check.type === "room") {
+                            similarity = this.similar(normalizedRoomName, check.normalizedRoom);
+                        } else if (check.type === "building") {
+                            similarity = this.similarStart(normalizedBuildingName, check.normalizedBuilding);
+                        } else if (check.type === "buildingAndRoom") {
+                            similarity = this.similar(normalizedRoomName, check.normalizedRoom);
+                            similarity += this.similarStart(normalizedBuildingName, check.normalizedBuilding);
+                        }
+
+                        if (check.subtr) {
+                            similarity /= 3;
+                        }
+
+                        if (similarity > 0.7) {
+                            filteredRooms.push(this.makeResponse(room, buildingData, part, buildingId, similarity));
+                        }
+                    }
+                }
+            }
+        }
+
+
+        console.log("filteredRooms:", filteredRooms.length);
+
+        // Sort by name length
+        // filteredRooms.sort((a, b) => a.name.length - b.name.length);
+        filteredRooms.sort((a, b) => {
+            if (b.similarity !== a.similarity) {
+                return b.similarity - a.similarity;
+            }
+            return a.name.length - b.name.length;
+        });
+
+        return filteredRooms;
+    }
+}
+
 class SearchOverlay {
     constructor(main) {
+        this.searcher = new SearchHandler(main);
         this.main = main;
         this.isSearchVisible = false;
         this.searchResults = [];
@@ -187,18 +395,7 @@ class SearchOverlay {
             console.error('Search overlay element not found!');
             return;
         }
-
-        this.ignoreText = [" ", "-", "/", "(", ")", ".", ",", "'", '"', "ä", "ö", "ü", "ß"];
-
         this.init();
-    }
-
-    normalizeText(text) {
-        let normalized = text.toLowerCase();
-        for (let char of this.ignoreText) {
-            normalized = normalized.replaceAll(char, "");
-        }
-        return normalized;
     }
 
     init() {
@@ -206,7 +403,7 @@ class SearchOverlay {
     }
 
     renderSearchContainer() {
-        console.log('Rendering search container, isSearchVisible:', this.isSearchVisible);
+        // console.log('Rendering search container, isSearchVisible:', this.isSearchVisible);
 
         // Clear existing content
         this.overlayElement.innerHTML = '';
@@ -240,7 +437,7 @@ class SearchOverlay {
             }, 100);
         };
         searchIcon.addEventListener('click', (e) => {
-            console.log('Search icon clicked!');
+            // console.log('Search icon clicked!');
             e.stopPropagation();
             this.setSearchVisible(true);
             focusInput();
@@ -254,8 +451,8 @@ class SearchOverlay {
 
         inputWrapper.appendChild(searchIcon);
 
+        // Create input field
         if (this.isSearchVisible) {
-            // Create input field
             this.inputElement = document.createElement('input');
             this.inputElement.type = 'text';
             this.inputElement.className = 'search-input';
@@ -273,6 +470,31 @@ class SearchOverlay {
         }
 
         this.containerElement.appendChild(inputWrapper);
+
+        //create typeSearch
+        if (this.isSearchVisible) {
+            const typeSearchWrapper = document.createElement('div');
+            typeSearchWrapper.className = 'type-search-wrapper';
+
+            const availableMapMarkerTypes = [
+                { "id": "WC-H", "icon": "🚹", "name": "Toilette Herren" },
+                { "id": "WC-D", "icon": "🚺", "name": "Toilette Damen" },
+            ]
+
+            for (const type of availableMapMarkerTypes) {
+                const typeItem = document.createElement('div');
+                typeItem.className = 'type-search-item';
+                typeItem.innerText = type.icon;
+                typeItem.title = type.name;
+                typeItem.addEventListener('click', () => {
+                    this.selectType(type.id);
+                });
+                typeSearchWrapper.appendChild(typeItem);
+            }
+
+            this.containerElement.appendChild(typeSearchWrapper);
+        }
+
         this.overlayElement.appendChild(this.containerElement);
 
         // Add click outside listener with proper scope
@@ -289,8 +511,12 @@ class SearchOverlay {
         this.overlayElement.appendChild(this.resultsElement);
     }
 
+    selectType(typeId) {
+        this.main.setMapMarkerType(typeId);
+    }
+
     setSearchVisible(visible) {
-        console.log('Setting search visible to:', visible);
+        // console.log('Setting search visible to:', visible);
         if (this.isSearchVisible === visible) {
             // Already in the correct state, no need to re-render
             return;
@@ -309,46 +535,22 @@ class SearchOverlay {
     }
 
     searchRoom(value) {
-        if (!this.main.buildingData) {
-            console.log('Building data not loaded yet');
-            return;
-        }
+        let results = this.searcher.searchRoom(value);
 
-        const normalizedValue = this.normalizeText(value);
-        console.log("searchRoom:", normalizedValue);
 
-        if (normalizedValue.length === 0) {
+        // Limit to 50 results
+        if (results.length == 0) {
             this.clearResults();
-            return;
+        } else if (results.length > 50) {
+            console.log("Too many rooms found, limiting to 50");
+            this.searchResults = results.slice(0, 50);
+        } else {
+            this.searchResults = results;
         }
 
-        const filteredRooms = [];
+        this.renderResults();
 
-        for (const [buildingId, building] of Object.entries(this.main.buildingData.part)) {
-            const buildingData = building.building;
-
-            for (const part of Object.values(building.parts || {})) {
-                for (const room of Object.values(part.rooms || {})) {
-                    const normalizedRoomName = this.normalizeText(room.rName);
-                    if (normalizedRoomName.includes(normalizedValue)) {
-                        filteredRooms.push(new SearchRoomResponse(
-                            room.rName,
-                            buildingData.displayName,
-                            room.latlng,
-                            part.level,
-                            room,
-                            buildingId,
-                            room.roomid
-                        ));
-                    }
-                }
-            }
-        }
-
-        console.log("filteredRooms:", filteredRooms.length);
-
-        // Sort by name length
-        filteredRooms.sort((a, b) => a.name.length - b.name.length);
+        return;
 
         // Limit to 50 results
         if (filteredRooms.length > 50) {
@@ -1137,12 +1339,12 @@ class Main {
             }
         };
         this.settingsService = new SettingsService(this);
-        // Route controls are now part of RoomInfoOverlay
 
         // Show loading state initially
         this.levelSelectOverlay.showLoadingState();
 
         this.genLayers();
+        this.addImages();
         await this.updateLayers();
         await this.loadData();
 
@@ -1276,6 +1478,22 @@ class Main {
             this.map.setZoom(zoom);
         }
 
+        // do room lookup from the old roomfinder: for each building in main.buildingData.part go through each <part>.part.rooms and check if any <room>.roomid == roomNum
+        const roomNum = params.get('roomNum');
+        if (roomNum && this.buildingData) {
+            for (const [buildingId, building] of Object.entries(this.buildingData.part)) {
+                for (const part of Object.values(building.parts || {})) {
+                    const room = Object.values(part.rooms || {}).find(r => r.roomid === roomNum);
+                    if (room) {
+                        // Room found, you can use it
+                        console.log(`Found room: ${room.rName} in building: ${buildingId}`);
+                        this.findAndSelectRoom(room.rName, building.building.displayName);
+                        break;
+                    }
+                }
+            }
+        }
+
         // Restore level
         const level = params.get('level');
         if (level && LEVEL_ORDER.includes(level)) {
@@ -1388,10 +1606,14 @@ class Main {
         this.layers = {};
         for (let level of LEVEL_ORDER) {
             //raster layer with url: /mapTiling/tiles/${level}/${z}/${x}/${y}.png
+            console.log("Max zoom level:", this.map.getMaxZoom(), "21");
+
             this.map.addSource(level, {
                 type: "raster",
                 tiles: [apiUrls.getTileMap(level)],
-                tileSize: 512
+                tileSize: 256,
+                attribution: '<a href="https://www.lmu.de/raumfinder/" target="_blank">© Ludwig-Maximilians-Universität München</a>',
+                maxzoom: 21
             });
             this.map.addLayer({
                 id: level,
@@ -1405,15 +1627,37 @@ class Main {
                     'raster-brightness-max': 0.15
                 }
             });
+
+            // add marker layer, to later add markers to
+            this.map.addSource(`marker-source-${level}`, {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+            this.map.addLayer({
+                id: `marker-layer-${level}`,
+                type: 'symbol',
+                source: `marker-source-${level}`,
+                layout: {
+                    'icon-image': 'wc-Icon',
+                    'icon-size': 0.5,
+                    'icon-allow-overlap': true
+                }
+            });
         }
+
     }
 
     async updateLayers() {
         for (let level of LEVEL_ORDER) {
             if (level === this.currentLevel) {
                 this.map.setLayoutProperty(level, 'visibility', 'visible');
+                this.map.setLayoutProperty(`marker-layer-${level}`, 'visibility', 'visible');
             } else {
                 this.map.setLayoutProperty(level, 'visibility', 'none');
+                this.map.setLayoutProperty(`marker-layer-${level}`, 'visibility', 'none');
             }
         }
 
@@ -1633,6 +1877,19 @@ class Main {
             return await response.json();
         } catch (error) {
             console.error('Failed to fetch routing data:', error);
+            return null;
+        }
+    }
+
+    async fetchMarkerLayer(type) {
+        try {
+            const response = await fetch(apiUrls.getMarker(type));
+            if (!response.ok) {
+                throw new Error(`Marker layer not found for type ${type}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to fetch marker layer:', error);
             return null;
         }
     }
@@ -1896,6 +2153,7 @@ class Main {
         // Add start and end markers
         this.addRouteMarkers();
     }
+
     addLevelChangeMarker(coord, fromLevel, toLevel) {
         // Remove previous marker if exists
         const markerId = `level-change-${fromLevel}-${toLevel}-${coord[0]}-${coord[1]}`;
@@ -1997,6 +2255,59 @@ class Main {
         }, 30);
     }
 
+    async setMapMarkerType(inputMarkerType) {
+        this.mapMarkerType = inputMarkerType;
+        let roomIds = await this.fetchMarkerLayer(inputMarkerType);
+        if (!roomIds) {
+            return;
+        }
+        let roomFeatures = {}
+        for (let level of LEVEL_ORDER) {
+            roomFeatures[level] = []
+        }
+
+        for (let roomid of roomIds) {
+            let sr = null;
+            let level = null;
+            for (const [buildingId, building] of Object.entries(this.buildingData.part)) {
+                for (const part of Object.values(building.parts || {})) {
+                    level = part.level
+                    const room = Object.values(part.rooms || {}).find(r => r.roomid === roomid);
+                    if (room) {
+                        // Room found, you can use it
+                        // console.log(`Found room: ${room.rName} in building: ${buildingId}`);
+                        sr = room;
+                        sr.level = level
+                        break;
+                    }
+                }
+            }
+            if (!sr) {
+                // console.warn(`Room ID "${roomid}" not found in building data`);
+                continue;
+            }
+
+            roomFeatures[sr.level].push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [sr.latlng.lng, sr.latlng.lat]
+                },
+                properties: {
+                    title: sr.rName,
+                    description: `Room ID: ${sr.roomid}`
+                }
+            });
+        }
+
+        for (let level of Object.keys(roomFeatures)) {
+            console.log(`Updating markers for level ${level} with ${roomFeatures[level].length} features`);
+            this.map.getSource(`marker-source-${level}`).setData({
+                type: 'FeatureCollection',
+                features: roomFeatures[level]
+            });
+        }
+    }
 
     groupRouteByLevel(routePoints) {
         const segments = [];
@@ -2163,6 +2474,16 @@ class Main {
         if (overlay) {
             overlay.remove();
         }
+    }
+
+    addImages() {
+        this.map.loadImage(apiUrls.getWCIcon())
+            .then(image => {
+                this.map.addImage('wc-Icon', image.data);
+            })
+            .catch(error => {
+                console.error('Error loading WC icon image (promise):', error);
+            });
     }
 }
 

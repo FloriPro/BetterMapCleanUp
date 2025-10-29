@@ -32,10 +32,12 @@ def viewer():
     # send file index.html
     return flask.send_file("placer/viewer/viewer.html")
 
+
 @app.route("/sw_placer_viewer_sw.js")
 def sw_placer_viewer_sw():
     # send service worker file
     return flask.send_file("placer/viewer/sw.js")
+
 
 @app.route("/placer")
 def placer():
@@ -65,6 +67,15 @@ def connectRouting():
 def mapViewer():
     # send file index.html
     return flask.send_file("mapViewer/index.html")
+
+
+@app.route("/mapTiling/tiles/<level>/<zoom>/<x>/<y>.png")
+def mapTiling(level, zoom, x, y):
+    # send tile map
+    if not os.path.exists(f"mapTiling/tiles/{level}/{zoom}/{x}/{y}.png"):
+        # send bytes of transparent image
+        return flask.send_file("mapTiling/empty.png")
+    return flask.send_file(f"mapTiling/tiles/{level}/{zoom}/{x}/{y}.png")
 
 
 @app.route("/<path:path>")

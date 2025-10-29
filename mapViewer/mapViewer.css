@@ -286,7 +286,7 @@ hr {
 }
 
 .search-container.expanded {
-    width: 220px;
+    width: 250px;
 }
 
 .search-input-wrapper {
@@ -1105,12 +1105,12 @@ hr {
 }
 
 .route-action-buttons.animate-height {
-    transition: height 0.3s cubic-bezier(.4,0,.2,1), margin 0.3s cubic-bezier(.4,0,.2,1), padding 0.3s cubic-bezier(.4,0,.2,1);
+    transition: height 0.3s cubic-bezier(.4, 0, .2, 1), margin 0.3s cubic-bezier(.4, 0, .2, 1), padding 0.3s cubic-bezier(.4, 0, .2, 1);
     overflow: hidden;
 }
 
 .route-info.animate-height {
-    transition: height 0.3s cubic-bezier(.4,0,.2,1), margin 0.3s cubic-bezier(.4,0,.2,1), padding 0.3s cubic-bezier(.4,0,.2,1);
+    transition: height 0.3s cubic-bezier(.4, 0, .2, 1), margin 0.3s cubic-bezier(.4, 0, .2, 1), padding 0.3s cubic-bezier(.4, 0, .2, 1);
     overflow: hidden;
 }
 
@@ -1296,4 +1296,17 @@ hr {
     display: block;
     margin: -6px;
     filter: blur(6px);
+}
+
+.type-search-wrapper {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.type-search-item {
+    font-size: 25px;
+
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
 }
