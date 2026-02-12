@@ -388,6 +388,7 @@ class SearchOverlay {
         this.inputElement = null;
         this.resultsElement = null;
         this.clickOutsideListener = null;
+        this.oldSearch = "";
 
         console.log('SearchOverlay constructor - overlayElement:', this.overlayElement);
 
@@ -429,10 +430,13 @@ class SearchOverlay {
         const focusInput = () => {
             if (this.inputElement) {
                 this.inputElement.focus();
+                this.inputElement.select();
             }
             setTimeout(() => {
                 if (this.inputElement) {
                     this.inputElement.focus();
+                    this.inputElement.select();
+                    this.searchRoom(this.oldSearch);
                 }
             }, 100);
         };
@@ -457,9 +461,11 @@ class SearchOverlay {
             this.inputElement.type = 'text';
             this.inputElement.className = 'search-input';
             this.inputElement.placeholder = 'Search room...';
+            this.inputElement.value = this.oldSearch;
 
             this.inputElement.addEventListener('input', (e) => {
                 this.searchRoom(e.target.value);
+                this.oldSearch = e.target.value;
             });
 
             this.inputElement.addEventListener('click', (e) => {
@@ -487,7 +493,10 @@ class SearchOverlay {
                 typeItem.innerText = type.icon;
                 typeItem.title = type.name;
                 typeItem.addEventListener('click', () => {
-                    this.selectType(type.id);
+                    //this.selectType(type.id);
+                    this.searchRoom(type.id);
+                    this.oldSearch = type.id;
+                    this.inputElement.value = type.id;
                 });
                 typeSearchWrapper.appendChild(typeItem);
             }
@@ -535,6 +544,18 @@ class SearchOverlay {
     }
 
     searchRoom(value) {
+        //check special keywords for map markers
+        if (value.toLowerCase() == "wc-h") {
+            this.selectType("WC-H");
+            this.clearResults();
+            return;
+        }
+        if (value.toLowerCase() == "wc-d") {
+            this.selectType("WC-D");
+            this.clearResults();
+            return;
+        }
+
         let results = this.searcher.searchRoom(value);
 
 
@@ -1362,6 +1383,10 @@ class Main {
             this.saveStateToUrl();
         });
 
+        this.map.on('click', (e) => {
+            this.onMapClick(e);
+        });
+
         // Listen for browser back/forward navigation
         window.addEventListener('hashchange', () => {
             this.loadStateFromUrl();
@@ -1369,10 +1394,9 @@ class Main {
     }
 
     setRouteStartPoint() {
-
         // Hide all UI overlays
         const overlays = [
-            document.getElementById('level-select-overlay'),
+            // document.getElementById('level-select-overlay'),
             document.getElementById('search-overlay'),
             document.getElementById('route-control-overlay'),
             document.getElementById('room-info-overlay'),
@@ -1392,13 +1416,14 @@ class Main {
         } else {
             borderOverlay.style.display = 'block';
         }
-
+        this.isRouteStartPointSetting = true;
         // Listen for one click
         const onClick = (e) => {
+            this.isRouteStartPointSetting = false;
             // Get clicked coordinates
             const lngLat = e.lngLat;
             // Save as custom start point
-            this.customRouteStart = { lat: lngLat.lat, lng: lngLat.lng };
+            this.customRouteStart = { lat: lngLat.lat, lng: lngLat.lng, level: this.currentLevel };
             // Remove listener and re-enable drag
             this.map.off('click', onClick);
             this.map.dragPan.enable();
@@ -1820,7 +1845,7 @@ class Main {
             console.log('Routing to room:', room.name, 'in building:', room.buildingName);
 
             // Find closest start point on ground level (or current level if desired)
-            let startPoint = this.findClosestPoint(userPosition, routingData.points, "EG");
+            let startPoint = this.findClosestPoint(userPosition, routingData.points, userPosition.level || 'EG');
             if (!startPoint) {
                 throw new Error('No valid start point found');
             }
@@ -2484,6 +2509,67 @@ class Main {
             .catch(error => {
                 console.error('Error loading WC icon image (promise):', error);
             });
+    }
+
+    onMapClick(e) {
+        // check if clicking on route-layer-*: cancel
+        for (const layer of this.map.getStyle().layers) {
+            if (layer.id.startsWith('route-click-layer-')) { // if this is a route layer
+                const features = this.map.queryRenderedFeatures(e.point, { layers: [layer.id] }); // if map click is on route layer
+                if (features.length > 0) {
+                    return;
+                }
+            }
+        }
+
+        if (this.isRouteStartPointSetting) return;
+
+        console.log('Map clicked at:', e.lngLat);
+
+        let nearestRoom = null;
+        let nearestDistance = Infinity;
+
+        //get the nearest room, and select it
+        for (const buildingId of Object.keys(this.buildingData.part)) {
+            for (const partId of Object.keys(this.buildingData.part[buildingId].parts)) {
+                const part = this.buildingData.part[buildingId].parts[partId];
+                if (part.level !== this.currentLevel) continue;
+                for (const roomId of Object.keys(part.rooms || {})) {
+                    const room = part.rooms[roomId];
+                    const distance = this.calculateDistance(
+                        e.lngLat.lat, e.lngLat.lng,
+                        room.latlng.lat, room.latlng.lng
+                    );
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearestRoom = {
+                            ...room,
+                            buildingId: buildingId,
+                            partId: partId,
+                            level: part.level
+                        };
+                    }
+                }
+            }
+        }
+
+        console.log('Nearest room:', nearestRoom, 'Distance:', nearestDistance);
+
+        if (!nearestRoom || nearestDistance > 20) {
+            console.log('No room found within 20 meters.');
+            return;
+        }
+        let room = nearestRoom;
+        this.selectRoom(new SearchRoomResponse(
+            room.rName,
+            this.buildingData.part[room.buildingId].building.displayName,
+            room.latlng,
+            this.buildingData.part[room.buildingId].parts[room.partId].level,
+            room,
+            room.buildingId,
+            room.roomid,
+            nearestDistance
+        ));
     }
 }
 
