@@ -36,8 +36,8 @@ if (location.hostname == "raumplan.flulu.de") {
         getAppData: () => "https://raumplan.flulu.de/app_data.json",
         getRoutingData: (buildingId) => `https://raumplan.flulu.de/routing/${buildingId}.json`,
         getTileMap: (level) => `https://raumplan.flulu.de/tilesLQ/${level}/{z}/{x}/{y}.png`,
-        getMarker: (type) => null,
-        getWCIcon: () => null,
+        getMarker: (type) => `https://raumplan.flulu.de/type-search/${type}.json`,
+        getWCIcon: () => `https://raumplan.flulu.de/imgs/wc-Icon.png`,
     }
 }
 
