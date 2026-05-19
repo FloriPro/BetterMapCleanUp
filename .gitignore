@@ -10,3 +10,48 @@ data*
 routing/routingGeneratorTest
 routing/mvgRouting
 routing/routingUpload/
+mapViewr/mapViewerTS/.gitignore
+mapViewr/mapViewerTS/.npmrc
+mapViewr/mapViewerTS/bun.lock
+mapViewr/mapViewerTS/package.json
+mapViewr/mapViewerTS/README.md
+mapViewr/mapViewerTS/svelte.config.js
+mapViewr/mapViewerTS/tsconfig.json
+mapViewr/mapViewerTS/vite.config.ts
+mapViewr/mapViewerTS/.vscode/extensions.json
+mapViewr/mapViewerTS/src/app.d.ts
+mapViewr/mapViewerTS/src/app.html
+mapViewr/mapViewerTS/src/lib/api.ts
+mapViewr/mapViewerTS/src/lib/apiurls.ts
+mapViewr/mapViewerTS/src/lib/index.ts
+mapViewr/mapViewerTS/src/lib/LevelSelect.svelte
+mapViewr/mapViewerTS/src/lib/Map.svelte
+mapViewr/mapViewerTS/src/lib/assets/favicon.svg
+mapViewr/mapViewerTS/src/routes/+layout.svelte
+mapViewr/mapViewerTS/src/routes/+page.svelte
+mapViewr/mapViewerTS/static/robots.txt
+mapViewr/mapViewer - Kopie/.gitignore
+mapViewr/mapViewer - Kopie/.npmrc
+mapViewr/mapViewer - Kopie/.prettierignore
+mapViewr/mapViewer - Kopie/.prettierrc
+mapViewr/mapViewer - Kopie/bun.lock
+mapViewr/mapViewer - Kopie/eslint.config.js
+mapViewr/mapViewer - Kopie/jsconfig.json
+mapViewr/mapViewer - Kopie/package.json
+mapViewr/mapViewer - Kopie/README.md
+mapViewr/mapViewer - Kopie/svelte.config.js
+mapViewr/mapViewer - Kopie/vite.config.js
+mapViewr/mapViewer - Kopie/.vscode/extensions.json
+mapViewr/mapViewer - Kopie/src/app.d.ts
+mapViewr/mapViewer - Kopie/src/app.html
+mapViewr/mapViewer - Kopie/src/lib/api.js
+mapViewr/mapViewer - Kopie/src/lib/availablelayers.js
+mapViewr/mapViewer - Kopie/src/lib/constants.js
+mapViewr/mapViewer - Kopie/src/lib/index.js
+mapViewr/mapViewer - Kopie/src/lib/LevelSelect.svelte
+mapViewr/mapViewer - Kopie/src/lib/Map.svelte
+mapViewr/mapViewer - Kopie/src/lib/RoomInfoOverlay.svelte
+mapViewr/mapViewer - Kopie/src/lib/assets/favicon.svg
+mapViewr/mapViewer - Kopie/src/routes/+layout.svelte
+mapViewr/mapViewer - Kopie/src/routes/+page.svelte
+mapViewr/mapViewer - Kopie/static/robots.txt

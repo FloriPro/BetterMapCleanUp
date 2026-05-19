@@ -124,5 +124,13 @@ def save(path):
         f.write(rdata)
     return "ok"
 
+@app.after_request
+def add_header(response):
+    # cors allow specific origins
+    allowed_origins = ["http://localhost:5173", "http://localhost:3015"]
+    request_origin = flask.request.headers.get("Origin")
+    if request_origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = request_origin
+    return response
 
 app.run(host="localhost", port=3015, debug=True)

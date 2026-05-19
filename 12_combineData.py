@@ -1,5 +1,7 @@
 # combine all json data needed in one big file, to improve performance
+from genericpath import isdir, isfile
 import json
+import os
 
 with open("data_buildingsJSON.json", encoding="UTF-8") as f:
     buildings = json.load(f)
@@ -7,6 +9,16 @@ with open("data_buildingsJSON.json", encoding="UTF-8") as f:
 output = {"buildings": buildings, "buildingParts": {}, "part": {}}
 
 appOutput = {"part": {}}
+
+hasLsfData = False
+if os.path.isdir("../lsfVerzeichnis/jsonSplit/"):
+    hasLsfData = True
+    lsfData = {}
+    for file in os.listdir("../lsfVerzeichnis/jsonSplit/"):
+        if file.endswith(".json"):
+            with open(f"../lsfVerzeichnis/jsonSplit/{file}", encoding="UTF-8") as f:
+                lsfData[file[:-5]] = json.load(f)
+
 
 for building in buildings:
     print(building["code"])
@@ -45,6 +57,18 @@ for building in buildings:
             f"data/{building['code']}/rooms/latlng/{part}.json", encoding="UTF-8"
         ) as f:  # rotation data is not used yet
             latlngRooms = json.load(f)["rooms"]
+
+        # try to lookup lsf data for rooms in this part
+        if hasLsfData:
+            # use jsonspit data to load lsf data for rooms in this part
+            for latlngRoomk, latlngRoom in latlngRooms.items():
+                # print(f"latlngRoom.roomId: {latlngRoom['roomid']}")
+                roomid = latlngRoom["roomid"]
+                if roomid[:3] in lsfData and roomid in lsfData[roomid[:3]]:
+                    d = lsfData[roomid[:3]][roomid]
+                    ausstattung = d["ausstattung"]
+                    if "Bestuhlung" in ausstattung:
+                        latlngRoom["bestuhlung"] = int(ausstattung["Bestuhlung"])
 
         output["part"][building["code"]][part] = {
             "rooms": rooms,

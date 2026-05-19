@@ -81,6 +81,12 @@ let currentLevel = "EG";
 let showAllLevels = false;
 let currentSelectedRoom = null;
 
+
+const availableMapMarkerTypes = [
+    { "id": "WC-H", "icon": "🚹", "name": "Toilette Herren", "selector": "wc-h" },
+    { "id": "WC-D", "icon": "🚺", "name": "Toilette Damen", "selector": "wc-d" }
+]
+
 class OneBuildingRoom {
     constructor(roomid, kurztext, langtext, raumart, ausstattung, gebaeude, geschossplan, raumfinderid, gebaeudeId) {
         this.roomid = roomid;
@@ -195,7 +201,7 @@ class SearchHandler {
         }
         normalized = normalized.replaceAll("  ", " ");
         for (let char of this.ignoreText) {
-            normalized = normalized.replaceAll(char, "");
+            normalized = normalized.replaceAll(char, " ");
         }
         return normalized;
     }
@@ -270,6 +276,31 @@ class SearchHandler {
         a = a.substring(0, minLen);
         b = b.substring(0, minLen);
         return this.similar(a, b) - 0.1;
+    }
+
+    similarAnywhere(a, b) {
+        // use the smallest length of the two strings, and check if one string is similar to any substring of the other string with that length
+        let minLen = Math.min(a.length, b.length);
+        if (minLen < 3) {
+            return this.similar(a, b) - 0.2; // if the strings are very short, require a higher similarity
+        }
+
+        let maxVal = 0;
+        for (let i = 0; i <= a.length - minLen; i++) {
+            let substringA = a.substring(i, i + minLen);
+            let sim = this.similar(substringA, b);
+            if (sim > maxVal) {
+                maxVal = sim;
+            }
+        }
+        for (let i = 0; i <= b.length - minLen; i++) {
+            let substringB = b.substring(i, i + minLen);
+            let sim = this.similar(substringB, a);
+            if (sim > maxVal) {
+                maxVal = sim;
+            }
+        }
+        return maxVal;
     }
 
     searchRoom(value) {
@@ -364,16 +395,44 @@ class SearchHandler {
 
         console.log("filteredRooms:", filteredRooms.length);
 
-        // Sort by name length
-        // filteredRooms.sort((a, b) => a.name.length - b.name.length);
+        // Sort by simmilarity and then by name length and then by bestuhlung (a.bestuhlung - b.bestuhlung)
         filteredRooms.sort((a, b) => {
             if (b.similarity !== a.similarity) {
                 return b.similarity - a.similarity;
             }
+            // return a.name.length - b.name.length;
+            if (b.originalRoom.bestuhlung && a.originalRoom.bestuhlung) {
+                return b.originalRoom.bestuhlung - a.originalRoom.bestuhlung;
+            } else if (b.originalRoom.bestuhlung) {
+                return 1;
+            } else if (a.originalRoom.bestuhlung) {
+                return -1;
+            }
             return a.name.length - b.name.length;
         });
 
+        // run checkMarkerProposals, and add it infront of the current filteredRooms
+        const markerProposals = this.checkMarkerProposals(value);
+        if (markerProposals.length > 0) {
+            console.log("markerProposals:", markerProposals);
+            filteredRooms.unshift(...markerProposals);
+        }
+
         return filteredRooms;
+    }
+
+    checkMarkerProposals(value) {
+        let out = [];
+        for (let type of availableMapMarkerTypes) {
+            if (this.similarAnywhere(this.normalizeText(type.name), this.normalizeText(value)) > 0.7 || this.similarAnywhere(this.normalizeText(type.selector), this.normalizeText(value)) > 0.7) {
+                out.push({
+                    actuallyMarkerProposal: true,
+                    type: type,
+                    name: type.name,
+                });
+            }
+        }
+        return out;
     }
 }
 
@@ -468,6 +527,17 @@ class SearchOverlay {
                 this.oldSearch = e.target.value;
             });
 
+            // Enter key to select first result
+            this.inputElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && this.searchResults.length > 0) {
+                    // click the first result
+                    const firstResult = this.resultsElement.querySelector('.search-result-item');
+                    if (firstResult) {
+                        firstResult.click();
+                    }
+                }
+            });
+
             this.inputElement.addEventListener('click', (e) => {
                 e.stopPropagation();
             });
@@ -482,21 +552,22 @@ class SearchOverlay {
             const typeSearchWrapper = document.createElement('div');
             typeSearchWrapper.className = 'type-search-wrapper';
 
-            const availableMapMarkerTypes = [
-                { "id": "WC-H", "icon": "🚹", "name": "Toilette Herren" },
-                { "id": "WC-D", "icon": "🚺", "name": "Toilette Damen" },
-            ]
-
             for (const type of availableMapMarkerTypes) {
                 const typeItem = document.createElement('div');
                 typeItem.className = 'type-search-item';
+                typeItem.dataset.typeId = type.id;
                 typeItem.innerText = type.icon;
                 typeItem.title = type.name;
                 typeItem.addEventListener('click', () => {
-                    //this.selectType(type.id);
-                    this.searchRoom(type.id);
-                    this.oldSearch = type.id;
-                    this.inputElement.value = type.id;
+                    if (this.main.mapMarkerType === type.id) {
+                        this.searchRoom(""); // toggle off
+                        this.oldSearch = "";
+                        this.inputElement.value = "";
+                    } else {
+                        this.searchRoom(type.id);
+                        this.oldSearch = type.id;
+                        this.inputElement.value = type.id;
+                    }
                 });
                 typeSearchWrapper.appendChild(typeItem);
             }
@@ -521,7 +592,19 @@ class SearchOverlay {
     }
 
     selectType(typeId) {
+        console.log("typeId", typeId);
         this.main.setMapMarkerType(typeId);
+        //change icon to X if typeId is already selected
+        const typeItems = this.overlayElement.querySelectorAll('.type-search-item');
+        typeItems.forEach(item => {
+            // item.innerText = item.dataset.typeId === typeId ? '❌' : availableMapMarkerTypes.find(type => type.id === item.dataset.typeId).icon;
+            if (item.dataset.typeId === typeId) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+                //item.innerText = availableMapMarkerTypes.find(type => type.id === item.dataset.typeId).icon;
+            }
+        });
     }
 
     setSearchVisible(visible) {
@@ -544,17 +627,16 @@ class SearchOverlay {
     }
 
     searchRoom(value) {
-        //check special keywords for map markers
-        if (value.toLowerCase() == "wc-h") {
-            this.selectType("WC-H");
-            this.clearResults();
-            return;
+        // check special keywords for map markers
+        for (let type of availableMapMarkerTypes) {
+            if (value.toLowerCase() == type.id.toLowerCase() || type.selector.toLowerCase() == value.toLowerCase()) {
+                this.selectType(type.id);
+                this.clearResults();
+                this.setMarkerResultHint(type);
+                return;
+            }
         }
-        if (value.toLowerCase() == "wc-d") {
-            this.selectType("WC-D");
-            this.clearResults();
-            return;
-        }
+        this.selectType(null);
 
         let results = this.searcher.searchRoom(value);
 
@@ -584,6 +666,15 @@ class SearchOverlay {
         this.renderResults();
     }
 
+    setMarkerResultHint(type) {
+        // instead of showing results, show a hint that the marker type has been selected
+        if (this.isSearchVisible) {
+            this.resultsElement.classList.add('visible');
+        }
+        this.resultsElement.innerHTML = `<div class="marker-result-hint">Map is showing Markers: ${type.name}</div>`;
+
+    }
+
     renderResults() {
         if (this.searchResults.length === 0) {
             this.resultsElement.classList.remove('visible');
@@ -597,6 +688,25 @@ class SearchOverlay {
         gridContainer.className = 'search-results-grid';
 
         this.searchResults.forEach(room => {
+            if (room.actuallyMarkerProposal) {
+                const resultItem = document.createElement('button');
+                resultItem.className = 'search-result-item marker-proposal';
+                const icon = document.createElement('span');
+                icon.className = 'marker-proposal-icon';
+                icon.innerText = room.type.icon;
+                resultItem.appendChild(icon);
+                const text = document.createElement('span');
+                text.innerText = `${room.name}`;
+                resultItem.appendChild(text);
+                resultItem.addEventListener('click', () => {
+                    this.oldSearch = room.type.id;
+                    this.inputElement.value = room.type.id;
+                    this.searchRoom(room.type.id);
+                });
+                gridContainer.appendChild(resultItem);
+                return;
+            }
+
             const resultItem = document.createElement('button');
             resultItem.className = 'search-result-item';
 
@@ -742,6 +852,7 @@ class RoomInfoOverlay {
         // Update main's selected room state and URL (without calling hideRoom again)
         this.main.selectedRoom = null;
         this.main.saveStateToUrl();
+        this.heightUpdate();
     }
 
     routeToRoom() {
@@ -792,10 +903,29 @@ class RoomInfoOverlay {
             .setLngLat([room.latLng.lng, room.latLng.lat])
             .addTo(this.main.map);
 
+        markerEl.addEventListener('click', (event) => {
+            event.stopPropagation() ;
+
+            this.main.updateLevel(room.level);
+        });
+
         // Add entrance animation
         setTimeout(() => {
             markerEl.classList.add('room-marker-visible');
         }, 50);
+        this.updateRoomMarkerColor();
+    }
+
+    updateRoomMarkerColor() {
+        if (!this.selectedRoomMarker) return;
+
+        const markerEl = this.selectedRoomMarker.getElement();
+        // if current level matches the room's level
+        if (this.main.currentLevel == this.currentRoom.level) {
+            markerEl.classList.remove("otherLevel")
+        } else {
+            markerEl.classList.add("otherLevel")
+        }
     }
 
     toggleExpanded() {
@@ -823,6 +953,7 @@ class RoomInfoOverlay {
     }
 
     render() {
+        this.heightUpdate();
         if (!this.currentRoom) return;
 
         // Track previous expanded state
@@ -910,6 +1041,9 @@ class RoomInfoOverlay {
         } else if (this.detailedRoom) {
             // Show detailed room information
             this.renderDetailedRoomInfo(details);
+            setTimeout(() => {
+                this.heightUpdate();
+            }, 300);
         } else {
             // Show basic information only
             this.renderBasicRoomInfo(details);
@@ -935,6 +1069,8 @@ class RoomInfoOverlay {
                 detailsEl.classList.remove('expanded');
             }
         }
+
+        this.heightUpdate()
     }
 
     renderBasicRoomInfo(container) {
@@ -1034,6 +1170,18 @@ class RoomInfoOverlay {
         container.appendChild(document.createElement('hr')); // Add a separator
 
         container.appendChild(lsfButton);
+    }
+
+    heightUpdate() {
+        let el = document.querySelector(".maplibregl-ctrl-bottom-right")
+        if (el) {
+            let h = this.overlayElement.getBoundingClientRect().height;
+            //if this is hidden, set to 20px
+            if (!this.overlayElement.classList.contains('visible')) {
+                h = 0;
+            }
+            el.style.bottom = h + "px";
+        }
     }
 
     createInfoRow(label, value) {
@@ -1171,6 +1319,9 @@ class RouteControlOverlay {
             collapseBtn.title = this.collapsed ? 'Expand route info' : 'Collapse route info';
             collapseBtn.addEventListener('click', () => {
                 this.collapsed = !this.collapsed;
+                setTimeout(() => {
+                    this.main.roomInfoOverlay.heightUpdate();
+                }, 350);
                 this.render(this.showInfo);
             });
             buttonContainer.appendChild(collapseBtn);
@@ -1201,6 +1352,8 @@ class RouteControlOverlay {
             <span class="route-info-icon">📍</span>
             <span>To: <span class="route-level-indicator">${this.routeInformation.room.name}</span></span>
         `;
+            routeInfo.appendChild(destinationItem);
+
 
             const buildingItem = document.createElement('div');
             buildingItem.className = 'route-info-item';
@@ -1209,6 +1362,7 @@ class RouteControlOverlay {
             <span class="route-level-indicator">${this.routeInformation.room.buildingName}</span>
         `;
 
+            routeInfo.appendChild(buildingItem);
             const levelItem = document.createElement('div');
             levelItem.className = 'route-info-item';
             levelItem.innerHTML = `
@@ -1216,10 +1370,46 @@ class RouteControlOverlay {
             <span>Level:</span>
             <span class="route-level-indicator">${this.routeInformation.room.level}</span>
         `;
-
-            routeInfo.appendChild(destinationItem);
-            routeInfo.appendChild(buildingItem);
             routeInfo.appendChild(levelItem);
+
+            // routeLength
+            const lengthItem = document.createElement('div');
+            lengthItem.className = 'route-info-item';
+            lengthItem.innerHTML = `
+            <span class="route-info-icon">📏</span>
+            <span>Length:</span>
+            <span class="route-level-indicator">${Math.round(this.routeInformation.routeLength * 10) / 10} m</span>
+        `;
+            routeInfo.appendChild(lengthItem);
+
+            // levelChanges
+            const levelChangeItem = document.createElement('div');
+            levelChangeItem.className = 'route-info-item';
+            levelChangeItem.innerHTML = `
+            <span class="route-info-icon">🔼</span>
+            <span>Level Changes:</span>
+            <span class="route-level-indicator">${this.routeInformation.levelChanges}</span>
+        `;
+            routeInfo.appendChild(levelChangeItem);
+
+            // timeEstimate
+            const timeEstimateItem = document.createElement('div');
+            timeEstimateItem.className = 'route-info-item';
+            const totalSeconds = Math.round(this.routeInformation.timeEstimate);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            let timeString = '';
+            if (minutes > 0) {
+                timeString = `${minutes} min${minutes > 1 ? 's' : ''} ${seconds} sec`;
+            } else {
+                timeString = `${seconds} sec`;
+            }
+            timeEstimateItem.innerHTML = `
+                <span class="route-info-icon">⏱️</span>
+                <span>Estimated Time:</span>
+                <span class="route-level-indicator">${timeString}</span>
+            `;
+            routeInfo.appendChild(timeEstimateItem);
 
             // Action buttons
             const actionBtns = document.createElement('div');
@@ -1335,6 +1525,8 @@ class RouteControlOverlay {
             }
         }
 
+        this.main.roomInfoOverlay.heightUpdate();
+
         return this.container;
     }
 }
@@ -1364,13 +1556,32 @@ class Main {
         // Show loading state initially
         this.levelSelectOverlay.showLoadingState();
 
+        // Load state from URL after data is loaded
         this.genLayers();
+        this.loadStateFromUrlBeforeLoad();
+
+        if (this.shouldWaitForDataToLoad()) {
+            // display a loading overlay or spinner until data is loaded
+            var loadingOverlay = document.createElement('div');
+            loadingOverlay.className = 'initial-loading-overlay';
+            loadingOverlay.innerHTML = `
+                <div class="spinner"></div>
+                <div class="loading-text">Loading map data...</div>
+            `;
+            document.body.appendChild(loadingOverlay);
+        }
         this.addImages();
-        await this.updateLayers();
+        this.updateLayers();
+
         await this.loadData();
 
         // Load state from URL after data is loaded
-        this.loadStateFromUrl();
+        this.loadStateFromUrlAfterLoad();
+
+        if (loadingOverlay != null) {
+            loadingOverlay.remove();
+        }
+
 
         await this.updateAvailableLayers();
 
@@ -1477,21 +1688,51 @@ class Main {
             if (this.customRouteStart) {
                 params.set('routeStartLat', this.customRouteStart.lat.toFixed(6));
                 params.set('routeStartLng', this.customRouteStart.lng.toFixed(6));
+                params.set('routeStartLevel', this.customRouteStart.level || '');
+            }
+        }
+
+        // save marker if any
+        if (this.mapMarkerType != null) {
+            params.set('marker', this.mapMarkerType);
+        }
+
+        // use tmp data if loading from url and data is not loaded yet, to prevent losing the parameters that require data to resolve
+        if (this.loadingTmpData) {
+            for (const [key, value] of Object.entries(this.loadingTmpData)) {
+                if (value) {
+                    params.set(key, value);
+                }
             }
         }
 
         // Update URL without causing page reload
         const newHash = '#' + params.toString();
         if (window.location.hash !== newHash) {
+            // console.log("Updating URL hash to:", newHash);
             window.history.replaceState(null, null, newHash);
         }
     }
 
-    loadStateFromUrl() {
+    loadStateFromUrlBeforeLoad() {
         const hash = window.location.hash.substring(1);
         if (!hash) return;
 
         const params = new URLSearchParams(hash);
+        this.initialUrlParams = params; // Store for later use after load
+
+        this.loadingTmpData = {
+            roomNum: params.get('roomNum'),
+            room: params.get('room'),
+            building: params.get('building'),
+            route: params.get('route'),
+            routeDest: params.get('routeDest'),
+            routeBuilding: params.get('routeBuilding'),
+            routeStartLat: params.get('routeStartLat'),
+            routeStartLng: params.get('routeStartLng'),
+            routeStartLevel: params.get('routeStartLevel'),
+            marker: params.get('marker')
+        } // tmp data, that while loading the url doesn't get lost (used in loadStateFromUrlAfterLoad, needs loaded data)
 
         // Restore map position
         const lat = parseFloat(params.get('lat'));
@@ -1502,6 +1743,33 @@ class Main {
             this.map.setCenter([lng, lat]);
             this.map.setZoom(zoom);
         }
+
+        // Restore level
+        const level = params.get('level');
+        if (level && LEVEL_ORDER.includes(level)) {
+            this.updateLevel(level);
+        }
+    }
+
+    shouldWaitForDataToLoad() {
+        // return true if url has room or route parameters that require building data to resolve
+        const params = this.initialUrlParams;
+        if (!params) return false;
+
+        const roomNum = params.get('roomNum');
+        const roomName = params.get('room');
+        const buildingName = params.get('building');
+        const routeEnabled = params.get('route') === '1';
+        const routeDest = params.get('routeDest');
+        const routeBuilding = params.get('routeBuilding');
+
+        return !!roomNum || !!roomName || !!buildingName || routeEnabled || !!routeDest || !!routeBuilding;
+
+    }
+
+    loadStateFromUrlAfterLoad() {
+        const params = this.initialUrlParams;
+        if (!params) return;
 
         // do room lookup from the old roomfinder: for each building in main.buildingData.part go through each <part>.part.rooms and check if any <room>.roomid == roomNum
         const roomNum = params.get('roomNum');
@@ -1517,12 +1785,6 @@ class Main {
                     }
                 }
             }
-        }
-
-        // Restore level
-        const level = params.get('level');
-        if (level && LEVEL_ORDER.includes(level)) {
-            this.updateLevel(level);
         }
 
         // Restore selected room
@@ -1546,7 +1808,8 @@ class Main {
                     if (routeStartLat && routeStartLng) {
                         this.customRouteStart = {
                             lat: parseFloat(routeStartLat),
-                            lng: parseFloat(routeStartLng)
+                            lng: parseFloat(routeStartLng),
+                            level: params.get('routeStartLevel')
                         };
                     } else {
                         this.customRouteStart = null;
@@ -1556,6 +1819,18 @@ class Main {
                 }
             });
         }
+
+        // Restore marker if any
+        const markerType = params.get('marker');
+        if (markerType) {
+            this.searchOverlay.searchRoom(markerType);
+            this.searchOverlay.oldSearch = markerType;
+            if (this.searchOverlay.inputElement) {
+                this.searchOverlay.inputElement.value = markerType;
+            }
+        }
+
+        this.loadingTmpData = null; // clear tmp data after loading
     }
 
     async findAndSelectRoom(roomName, buildingName) {
@@ -1672,10 +1947,9 @@ class Main {
                 }
             });
         }
-
     }
 
-    async updateLayers() {
+    updateLayers() {
         for (let level of LEVEL_ORDER) {
             if (level === this.currentLevel) {
                 this.map.setLayoutProperty(level, 'visibility', 'visible');
@@ -1690,6 +1964,8 @@ class Main {
         if (this.showRoute) {
             this.updateRouteVisibility();
         }
+
+        this.roomInfoOverlay.updateRoomMarkerColor();
     }
 
     updateRouteVisibility() {
@@ -1790,7 +2066,7 @@ class Main {
     }
 
     async loadData() {
-        let buildingData = await (await fetch(apiUrls.getAppData())).json();
+        let buildingData = await (await fetch(apiUrls.getAppData(), {})).json();
         console.log(buildingData);
         this.buildingData = buildingData;
     }
@@ -1827,7 +2103,6 @@ class Main {
                 return null;
             });
             if (!userPosition) {
-
                 this.isLoadingRoute = false;
                 this.hideLoadingOverlay();
                 // Update room info overlay
@@ -1871,10 +2146,36 @@ class Main {
                 level: point.level
             }));
 
+
+            //// COOL STATS CALCULATIONS
+            // Route length
+            let routeLength = 0;
+            for (let i = 1; i < route.length; i++) {
+                routeLength += this.calculateDistance(
+                    route[i - 1].lat, route[i - 1].lng,
+                    route[i].lat, route[i].lng
+                );
+            }
+
+            // Level changes
+            let levelChanges = 0;
+            for (let i = 1; i < route.length; i++) {
+                if (route[i].level !== route[i - 1].level) {
+                    levelChanges++;
+                }
+            }
+
+            // Estimate time (assuming average walking speed of 1.4 m/s and 30 seconds per level change)
+            const walkingSpeed = this.settingsService.getValue("walkingSpeed"); // m/s
+            const timeEstimate = routeLength / walkingSpeed + levelChanges * (this.settingsService.getValue("timePerLevelChange"));
+
             this.routeInformation = {
                 start: [userPosition.lng, userPosition.lat],
                 end: [room.latLng.lng, room.latLng.lat],
-                room: room
+                room: room,
+                routeLength: routeLength,
+                levelChanges: levelChanges,
+                timeEstimate: timeEstimate
             };
 
             this.showRoute = true;
@@ -2282,6 +2583,11 @@ class Main {
 
     async setMapMarkerType(inputMarkerType) {
         this.mapMarkerType = inputMarkerType;
+        this.saveStateToUrl();
+        if (inputMarkerType == null) {
+            this.clearMapMarkers();
+            return;
+        }
         let roomIds = await this.fetchMarkerLayer(inputMarkerType);
         if (!roomIds) {
             return;
@@ -2330,6 +2636,15 @@ class Main {
             this.map.getSource(`marker-source-${level}`).setData({
                 type: 'FeatureCollection',
                 features: roomFeatures[level]
+            });
+        }
+    }
+
+    clearMapMarkers() {
+        for (let level of LEVEL_ORDER) {
+            this.map.getSource(`marker-source-${level}`).setData({
+                type: 'FeatureCollection',
+                features: []
             });
         }
     }
@@ -2502,13 +2817,32 @@ class Main {
     }
 
     addImages() {
-        this.map.loadImage(apiUrls.getWCIcon())
+        /*this.map.loadImage(apiUrls.getWCIcon())
             .then(image => {
                 this.map.addImage('wc-Icon', image.data);
             })
             .catch(error => {
                 console.error('Error loading WC icon image (promise):', error);
+            });*/
+        let ret = this.map.loadImage(apiUrls.getWCIcon(), (error, image) => {
+            if (error) {
+                console.error('Error loading WC icon image (callback):', error);
+                return;
+            }
+            if (!this.map.hasImage('wc-Icon')) {
+                this.map.addImage('wc-Icon', image);
+            }
+        });
+        if (ret instanceof Promise) {
+            ret.catch(error => {
+                console.error('Error loading WC icon image (promise):', error);
             });
+            ret.then(image => {
+                if (!this.map.hasImage('wc-Icon')) {
+                    this.map.addImage('wc-Icon', image.data);
+                }
+            });
+        }
     }
 
     onMapClick(e) {
@@ -2522,7 +2856,11 @@ class Main {
             }
         }
 
+        //if setting route start point
         if (this.isRouteStartPointSetting) return;
+
+        // if search open
+        if (this.searchOverlay.isSearchVisible) return;
 
         console.log('Map clicked at:', e.lngLat);
 
@@ -2555,8 +2893,12 @@ class Main {
 
         console.log('Nearest room:', nearestRoom, 'Distance:', nearestDistance);
 
-        if (!nearestRoom || nearestDistance > 20) {
-            console.log('No room found within 20 meters.');
+        if (!nearestRoom || nearestDistance > 4) {
+            console.log('No room found within 4 meters.');
+            //deselect room if clicking on empty space and no route is open
+            if (this.routeInformation == null) {
+                this.roomInfoOverlay.hideRoom();
+            }
             return;
         }
         let room = nearestRoom;
@@ -2610,13 +2952,32 @@ class SettingsService {
                 category: "Routing Preferences",
                 description: "Ignore locked areas when calculating routes"
             },
+            noElevator: {
+                name: "Ignore Elevators",
+                type: "bool",
+                default: true,
+                category: "Routing Preferences",
+                description: "Ignore elevators when calculating routes (even if stairs are avoided)"
+            },
             units: {
                 name: "Distance Units",
-                type: "string",
+                type: "select",
                 default: "Meters",
                 category: "Display Settings",
                 options: ["Meters", "Feet"]
-            }
+            },
+            walkingSpeed: {
+                name: "Walking Speed (m/s)",
+                type: "number",
+                default: 1.4,
+                category: "Display Settings"
+            },
+            timePerLevelChange: {
+                name: "Time per Level Change (seconds)",
+                type: "number",
+                default: 30,
+                category: "Display Settings"
+            },
         };
         this.values = {};
         this.load();
@@ -2651,7 +3012,7 @@ class SettingsService {
         // accessible == true means: the route is not accessible
         if (this.getValue('accessible')) {
             if (lineTags['accessible'] === true) {
-                weight *= 1000;
+                weight *= 10000;
             }
         } else {
             if (pointTags['elevator'] === true) {
@@ -2674,7 +3035,12 @@ class SettingsService {
         }
         if (!this.getValue('shortestPath')) {
             if (lineTags['accessible'] === true) {
-                weight *= 1.5;
+                weight *= 2;
+            }
+        }
+        if (this.getValue('noElevator')) {
+            if (pointTags['elevator'] === true) {
+                weight *= 10000;
             }
         }
         return weight;
@@ -2787,7 +3153,7 @@ class SettingsOverlay {
                     control.dispatchEvent(new Event('change'));
                 }
             });
-        } else if (cfg.type === 'string' && cfg.options) {
+        } else if (cfg.type === 'select' && cfg.options) {
             control = document.createElement('select');
             for (const opt of cfg.options) {
                 const option = document.createElement('option');
@@ -2805,6 +3171,30 @@ class SettingsOverlay {
                     control.focus();
                 }
             });
+        } else if (cfg.type === 'number') {
+            control = document.createElement('input');
+            control.type = 'number';
+            control.value = this.main.settingsService.getValue(key);
+            control.onchange = (e) => {
+                const val = parseFloat(control.value);
+                if (!isNaN(val)) {
+                    this.main.settingsService.save(key, val);
+                }
+            };
+            // Clicking row focuses input
+            row.addEventListener('click', (e) => {
+                if (e.target !== control) {
+                    control.focus();
+                }
+            });
+        } else {
+            console.warn('Unsupported setting type:', cfg.type);
+        }
+
+
+        if (!control) {
+            control = document.createElement('div');
+            control.textContent = 'Unsupported setting type: ' + JSON.stringify(cfg);
         }
         row.appendChild(control);
 

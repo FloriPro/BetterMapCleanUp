@@ -143,7 +143,9 @@ console.log(JSON.stringify(rename)); // -> data_rename.json
 - data/data.json -> data.json
 - routing/routingUpload/ -> routing/
 
-- _from lsf repo_ -> roomInfo/
+- _from lsf repo_:
+  - jsonSplit/ -> roomInfo/
+  - typeSearch/ -> roomInfo/typeSearch
 
 # Map Viewer
 
