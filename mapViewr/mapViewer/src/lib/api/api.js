@@ -74,9 +74,26 @@ class OneBuildingRoom {
 
 let api = new (class api {
     /**
+     * @param {string} buildingId 
+     * @returns {Promise<import("./datatype").RoutingData | null>}
+     */
+    async getRoutingData(buildingId) {
+        try {
+            const response = await fetch(apiUrls.getRoutingData(buildingId));
+            if (!response.ok) {
+                throw new Error(`Routing data not found for building ${buildingId}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to fetch routing data:', error);
+            return null;
+        }
+    }
+    /**
      * @param {string} roomName
      * @param {string} buildingName
-     * @param {string | null} level
+     * @param {string | null | undefined} level
+     * @returns {Promise<SearchRoomResponse | null>}
      */
     async findRoom(roomName, buildingName, level) {
         let data = await this.getData();
@@ -85,7 +102,7 @@ let api = new (class api {
             if (building.building.displayName.toLowerCase() === buildingName.toLowerCase()) {
                 for (const partKey of Object.keys(building.parts)) {
                     const part = building.parts[partKey];
-                    if (part.level === level) {
+                    if (level == undefined || part.level === level) {
                         for (const roomKey of Object.keys(part.rooms)) {
                             const room = part.rooms[roomKey];
                             if (room.rName === roomName) {
@@ -108,7 +125,6 @@ let api = new (class api {
         return null;
     }
     /**
-     * 
      * @param {MarkerProposal} selectedMarker
      * @return {Promise<string[] | null>}
      */
@@ -142,7 +158,6 @@ let api = new (class api {
     }
 
     /**
-     * 
      * @param {Function} callback 
      */
     onDataLoaded(callback) {
@@ -157,6 +172,9 @@ let api = new (class api {
         }
     }
 
+    /**
+     * @return {import("./datatype").BuildingsData}
+     */
     getSyncData() {
         if (!this._data) {
             throw new Error("Data not loaded")
@@ -164,6 +182,9 @@ let api = new (class api {
         return this._data
     }
 
+    /**
+     * @return {Promise<import("./datatype").BuildingsData>}
+     */
     async getData() {
         await this._loadData()
         if (!this._data) {

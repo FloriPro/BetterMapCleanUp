@@ -38,6 +38,12 @@ export function handleMapClick({
     }
   }
 
+  // check if marker with class "srm" will be clicked: cancel
+  const elementsAtPoint = document.elementsFromPoint(e.point.x, e.point.y);
+  if (elementsAtPoint.some(el => el.classList.contains('srm'))) {
+    return;
+  }
+
   // If setting route start point (implement your own flag if needed)
   if (isRouteStartPointSetting) return;
 
