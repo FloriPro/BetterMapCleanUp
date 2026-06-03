@@ -89,6 +89,35 @@ let api = new (class api {
             return null;
         }
     }
+
+    /**
+     * @param {string} roomNum
+     */
+    async findRoomByNumber(roomNum) {
+        let data = await this.getData();
+        for (const buildingKey of Object.keys(data.part)) {
+            const building = data.part[buildingKey];
+            for (const partKey of Object.keys(building.parts)) {
+                const part = building.parts[partKey];
+                for (const roomKey of Object.keys(part.rooms)) {
+                    const room = part.rooms[roomKey];
+                    if (room.roomid == roomNum) {
+                        return new SearchRoomResponse(
+                            room.rName,
+                            building.building.displayName,
+                            room.latlng,
+                            part.level,
+                            room,
+                            buildingKey,
+                            room.roomid,
+                            1
+                        );
+                    }
+                }
+            }
+        }
+        return null;
+    }
     /**
      * @param {string} roomName
      * @param {string} buildingName

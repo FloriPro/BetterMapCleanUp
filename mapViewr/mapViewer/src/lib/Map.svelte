@@ -439,6 +439,7 @@
         const buildingName = params.get("building");
         const markerTypeId = params.get("marker");
         const route = params.get("route");
+        const roomNum = params.get("roomNum"); // get from old roomfinder
 
         if (lat && lng && zoom) {
             map?.setCenter([lng, lat]);
@@ -446,6 +447,27 @@
         }
         if (level) {
             levelSelect?.setLevel(level);
+        }
+        if (roomNum) {
+            console.log("Looking for room by number from URL:", roomNum);
+            api.findRoomByNumber(roomNum).then((result) => {
+                if (result) {
+                    selectRoom(result, false);
+                    if (result.level) {
+                        levelSelect?.setLevel(result.level);
+                    }
+                    map?.flyTo({
+                        center: [result.latLng.lng, result.latLng.lat],
+                        zoom: Math.max(20, map.getZoom()),
+                        duration: 1000,
+                    });
+                } else {
+                    console.warn(
+                        "Could not find room by number from URL:",
+                        roomNum,
+                    );
+                }
+            });
         }
         if (roomName && buildingName) {
             api.findRoom(roomName, buildingName, undefined /*level*/).then(
