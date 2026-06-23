@@ -151,7 +151,7 @@
         border-radius: 6px;
         overflow: hidden;
         font-size: 12px;
-		margin-bottom: 12px;
+        margin-bottom: 12px;
     }
 
     .lsf-button {

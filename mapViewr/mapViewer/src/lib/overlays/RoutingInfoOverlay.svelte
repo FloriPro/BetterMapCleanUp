@@ -8,14 +8,17 @@
      * @type {{
      *     setisRouteStartPointSetting: Function;
      *     isRouteStartPointSetting: boolean;
-     *     routeInformation: {
-     *         start: { lat: number; lng: number };
-     *         end: { lat: number; lng: number };
-     *         room: SearchRoomResponse;
-     *         routeLength: number;
-     *         levelChanges: number;
-     *         timeEstimate: number;
-     *     } | null | {error:string};
+     *     routeInformation:
+     *         | {
+     *               start: { lat: number; lng: number };
+     *               end: { lat: number; lng: number };
+     *               room: SearchRoomResponse;
+     *               routeLength: number;
+     *               levelChanges: number;
+     *               timeEstimate: number;
+     *           }
+     *         | null
+     *         | { error: string };
      *     setrouteinformation: Function;
      *     setroutePoints: Function;
      *     setRouteError: Function;
@@ -259,7 +262,7 @@
          */ error) {
             console.error("Error routing to room:", error);
             // alert("Error calculating route: " + error.message);
-            setRouteError(error.message)
+            setRouteError(error.message);
         } finally {
             routeLoading = false;
         }

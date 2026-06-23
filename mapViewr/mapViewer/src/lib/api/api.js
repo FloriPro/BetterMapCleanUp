@@ -1,33 +1,52 @@
-import apiUrls from "../constants"
+import apiUrls from "../constants";
 import { MarkerProposal, SearchRoomResponse } from "../searchEngine";
 
 class OneBuildingRoom {
     /**
-     * 
-     * @param {string} roomid 
-     * @param {string} kurztext 
-     * @param {string} langtext 
-     * @param {string} raumart 
+     * @param {string} roomid
+     * @param {string} kurztext
+     * @param {string} langtext
+     * @param {string} raumart
      * @param {{ [key: string]: unknown }} ausstattung
-     * @param {string} gebaeude 
-     * @param {string} geschossplan 
-     * @param {string} raumfinderid 
-     * @param {string} gebaeudeId 
+     * @param {string} gebaeude
+     * @param {string} geschossplan
+     * @param {string} raumfinderid
+     * @param {string} gebaeudeId
      */
-    constructor(roomid, kurztext, langtext, raumart, ausstattung, gebaeude, geschossplan, raumfinderid, gebaeudeId) {
+    constructor(
+        roomid,
+        kurztext,
+        langtext,
+        raumart,
+        ausstattung,
+        gebaeude,
+        geschossplan,
+        raumfinderid,
+        gebaeudeId,
+    ) {
         this.roomid = roomid;
         this.kurztext = kurztext;
         this.langtext = langtext;
         this.raumart = raumart;
         this.ausstattung = ausstattung || {};
         this.gebaeude = gebaeude;
-        this.geschossplan = geschossplan || '';
+        this.geschossplan = geschossplan || "";
         this.raumfinderid = raumfinderid;
-        this.gebaeudeId = gebaeudeId || '';
+        this.gebaeudeId = gebaeudeId || "";
     }
 
     /**
-     * @param {{ roomid: { toString: () => string; }; kurztext: string; langtext: string; raumart: string; ausstattung: Record<string, unknown>; gebaeude: string; geschossplan: string; raumfinderid: string; gebaeudeId: string; }} json
+     * @param {{
+     *     roomid: { toString: () => string };
+     *     kurztext: string;
+     *     langtext: string;
+     *     raumart: string;
+     *     ausstattung: Record<string, unknown>;
+     *     gebaeude: string;
+     *     geschossplan: string;
+     *     raumfinderid: string;
+     *     gebaeudeId: string;
+     * }} json
      */
     static fromJson(json) {
         return new OneBuildingRoom(
@@ -37,9 +56,9 @@ class OneBuildingRoom {
             json.raumart,
             json.ausstattung || {},
             json.gebaeude,
-            json.geschossplan || '',
+            json.geschossplan || "",
             json.raumfinderid,
-            json.gebaeudeId || ''
+            json.gebaeudeId || "",
         );
     }
 
@@ -53,7 +72,7 @@ class OneBuildingRoom {
             gebaeude: this.gebaeude,
             geschossplan: this.geschossplan,
             raumfinderid: this.raumfinderid,
-            gebaeudeId: this.gebaeudeId
+            gebaeudeId: this.gebaeudeId,
         };
     }
 
@@ -63,29 +82,33 @@ class OneBuildingRoom {
     toView(search) {
         return {
             "Short Description": this.kurztext,
-            "Description": this.langtext,
+            Description: this.langtext,
             "Room Type": this.raumart,
-            "Level": search.level,
-            "Equipment": Object.entries(this.ausstattung).map(([key, value]) => `${key}: ${value}`).join(', '),
+            Level: search.level,
+            Equipment: Object.entries(this.ausstattung)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(", "),
             "Building Code": this.gebaeude,
-        }
+        };
     }
 }
 
 let api = new (class api {
     /**
-     * @param {string} buildingId 
+     * @param {string} buildingId
      * @returns {Promise<import("./datatype").RoutingData | null>}
      */
     async getRoutingData(buildingId) {
         try {
             const response = await fetch(apiUrls.getRoutingData(buildingId));
             if (!response.ok) {
-                throw new Error(`Routing data not found for building ${buildingId}`);
+                throw new Error(
+                    `Routing data not found for building ${buildingId}`,
+                );
             }
             return await response.json();
         } catch (error) {
-            console.error('Failed to fetch routing data:', error);
+            console.error("Failed to fetch routing data:", error);
             return null;
         }
     }
@@ -110,7 +133,7 @@ let api = new (class api {
                             room,
                             buildingKey,
                             room.roomid,
-                            1
+                            1,
                         );
                     }
                 }
@@ -128,7 +151,10 @@ let api = new (class api {
         let data = await this.getData();
         for (const buildingKey of Object.keys(data.part)) {
             const building = data.part[buildingKey];
-            if (building.building.displayName.toLowerCase() === buildingName.toLowerCase()) {
+            if (
+                building.building.displayName.toLowerCase() ===
+                buildingName.toLowerCase()
+            ) {
                 for (const partKey of Object.keys(building.parts)) {
                     const part = building.parts[partKey];
                     if (level == undefined || part.level === level) {
@@ -143,7 +169,7 @@ let api = new (class api {
                                     room,
                                     buildingKey,
                                     room.roomid,
-                                    1
+                                    1,
                                 );
                             }
                         }
@@ -155,7 +181,7 @@ let api = new (class api {
     }
     /**
      * @param {MarkerProposal} selectedMarker
-     * @return {Promise<string[] | null>}
+     * @returns {Promise<string[] | null>}
      */
     async getMarker(selectedMarker) {
         let url = apiUrls.getMarker(selectedMarker.type.id);
@@ -169,7 +195,7 @@ let api = new (class api {
                 return null;
             }
         } catch (error) {
-            console.error('Error fetching marker details:', error);
+            console.error("Error fetching marker details:", error);
             return null;
         }
     }
@@ -183,61 +209,62 @@ let api = new (class api {
     _data;
 
     dataLoaded() {
-        return !!this._data
+        return !!this._data;
     }
 
     /**
-     * @param {Function} callback 
+     * @param {Function} callback
      */
     onDataLoaded(callback) {
         if (this._data) {
-            callback(this._data)
+            callback(this._data);
         } else {
             this._loadData().then(() => {
                 if (this._data) {
-                    callback(this._data)
+                    callback(this._data);
                 }
-            })
+            });
         }
     }
 
     /**
-     * @return {import("./datatype").BuildingsData}
+     * @returns {import("./datatype").BuildingsData}
      */
     getSyncData() {
         if (!this._data) {
-            throw new Error("Data not loaded")
+            throw new Error("Data not loaded");
         }
-        return this._data
+        return this._data;
     }
 
     /**
-     * @return {Promise<import("./datatype").BuildingsData>}
+     * @returns {Promise<import("./datatype").BuildingsData>}
      */
     async getData() {
-        await this._loadData()
+        await this._loadData();
         if (!this._data) {
-            throw new Error("Data not loaded")
+            throw new Error("Data not loaded");
         }
-        return this._data
+        return this._data;
     }
 
     _loadData() {
         if (this.datapromise) {
-            return this.datapromise
+            return this.datapromise;
         }
         this.datapromise = new Promise((resolve, reject) => {
-            fetch(apiUrls.getAppData()).then(res => res.json()).then(data => {
-                this._data = data
-                resolve(data)
-            });
+            fetch(apiUrls.getAppData())
+                .then((res) => res.json())
+                .then((data) => {
+                    this._data = data;
+                    resolve(data);
+                });
         });
-        return this.datapromise
+        return this.datapromise;
     }
 
     /**
-     * 
-     * @param {string} id 
+     * @param {string} id
      * @returns {SearchRoomResponse | null}
      */
     syncGetSearchRoom(id) {
@@ -262,8 +289,8 @@ let api = new (class api {
                             room,
                             buildingKey,
                             room.roomid,
-                            1
-                        )
+                            1,
+                        );
                     }
                 }
             }
@@ -271,10 +298,8 @@ let api = new (class api {
         return null;
     }
 
-
     /**
-     * 
-     * @param {string} id 
+     * @param {string} id
      * @returns {Promise<SearchRoomResponse | null>}
      */
     async getSearchRoom(id) {
@@ -283,8 +308,7 @@ let api = new (class api {
     }
 
     /**
-     * 
-     * @param {string} id 
+     * @param {string} id
      * @returns {Promise<OneBuildingRoom | null>}
      */
     async getRoom(id) {
@@ -324,7 +348,7 @@ let api = new (class api {
                 return null;
             }
         } catch (error) {
-            console.error('Error fetching room details:', error);
+            console.error("Error fetching room details:", error);
             return null;
         }
     }
@@ -345,6 +369,6 @@ let api = new (class api {
          */
         this.buildingCache = {};
     }
-})()
+})();
 
-export default api
+export default api;

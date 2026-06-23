@@ -13,14 +13,17 @@
      *     selectedRoom: SearchRoomResponse | null;
      *     selectRoom: Function;
      *     routeToRoom: Function;
-     *     routeInformation: {
-     *         start: { lat: number; lng: number };
-     *         end: { lat: number; lng: number };
-     *         room: SearchRoomResponse;
-     *         routeLength: number;
-     *         levelChanges: number;
-     *         timeEstimate: number;
-     *     } | null | {error:string};
+     *     routeInformation:
+     *         | {
+     *               start: { lat: number; lng: number };
+     *               end: { lat: number; lng: number };
+     *               room: SearchRoomResponse;
+     *               routeLength: number;
+     *               levelChanges: number;
+     *               timeEstimate: number;
+     *           }
+     *         | null
+     *         | { error: string };
      *     clearRoute?: () => void;
      * }} }
      */

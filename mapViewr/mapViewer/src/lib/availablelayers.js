@@ -1,14 +1,13 @@
-import { LEVEL_ORDER } from './constants';
+import { LEVEL_ORDER } from "./constants";
 
 /**
- * 
- * @param {import('maplibre-gl').Map} map
- * @param {any} buildingData 
+ * @param {import("maplibre-gl").Map} map
+ * @param {any} buildingData
  * @returns {string[] | null}
  */
 export function getAvailableLayers(map, buildingData) {
     if (!buildingData) {
-        console.log('Building data not yet loaded');
+        console.log("Building data not yet loaded");
         return null;
     }
 
@@ -21,7 +20,7 @@ export function getAvailableLayers(map, buildingData) {
         west: mapBounds.getWest() - expandFactor,
         east: mapBounds.getEast() + expandFactor,
         south: mapBounds.getSouth() - expandFactor,
-        north: mapBounds.getNorth() + expandFactor
+        north: mapBounds.getNorth() + expandFactor,
     };
 
     /**
@@ -40,15 +39,17 @@ export function getAvailableLayers(map, buildingData) {
                 { lat: poly.topLeft.lat, lng: poly.topLeft.lng },
                 { lat: poly.topRight.lat, lng: poly.topRight.lng },
                 { lat: poly.bottomLeft.lat, lng: poly.bottomLeft.lng },
-                { lat: poly.bottomRight.lat, lng: poly.bottomRight.lng }
+                { lat: poly.bottomRight.lat, lng: poly.bottomRight.lng },
             ];
 
             let isInBounds = false;
             for (const corner of corners) {
-                if (corner.lng >= expandedBounds.west &&
+                if (
+                    corner.lng >= expandedBounds.west &&
                     corner.lng <= expandedBounds.east &&
                     corner.lat >= expandedBounds.south &&
-                    corner.lat <= expandedBounds.north) {
+                    corner.lat <= expandedBounds.north
+                ) {
                     isInBounds = true;
                     break;
                 }
@@ -57,17 +58,39 @@ export function getAvailableLayers(map, buildingData) {
             // Also check if the map bounds intersect with the building bounds
             if (!isInBounds) {
                 const buildingBounds = {
-                    west: Math.min(poly.topLeft.lng, poly.bottomLeft.lng, poly.topRight.lng, poly.bottomRight.lng),
-                    east: Math.max(poly.topLeft.lng, poly.bottomLeft.lng, poly.topRight.lng, poly.bottomRight.lng),
-                    south: Math.min(poly.topLeft.lat, poly.bottomLeft.lat, poly.topRight.lat, poly.bottomRight.lat),
-                    north: Math.max(poly.topLeft.lat, poly.bottomLeft.lat, poly.topRight.lat, poly.bottomRight.lat)
+                    west: Math.min(
+                        poly.topLeft.lng,
+                        poly.bottomLeft.lng,
+                        poly.topRight.lng,
+                        poly.bottomRight.lng,
+                    ),
+                    east: Math.max(
+                        poly.topLeft.lng,
+                        poly.bottomLeft.lng,
+                        poly.topRight.lng,
+                        poly.bottomRight.lng,
+                    ),
+                    south: Math.min(
+                        poly.topLeft.lat,
+                        poly.bottomLeft.lat,
+                        poly.topRight.lat,
+                        poly.bottomRight.lat,
+                    ),
+                    north: Math.max(
+                        poly.topLeft.lat,
+                        poly.bottomLeft.lat,
+                        poly.topRight.lat,
+                        poly.bottomRight.lat,
+                    ),
                 };
 
                 // Check for bounds intersection
-                isInBounds = !(expandedBounds.east < buildingBounds.west ||
+                isInBounds = !(
+                    expandedBounds.east < buildingBounds.west ||
                     expandedBounds.west > buildingBounds.east ||
                     expandedBounds.north < buildingBounds.south ||
-                    expandedBounds.south > buildingBounds.north);
+                    expandedBounds.south > buildingBounds.north
+                );
             }
 
             if (isInBounds && !availableLevels.includes(level)) {
@@ -77,6 +100,8 @@ export function getAvailableLayers(map, buildingData) {
         }
     }
 
-    availableLevels.sort((a, b) => LEVEL_ORDER.indexOf(a) - LEVEL_ORDER.indexOf(b));
+    availableLevels.sort(
+        (a, b) => LEVEL_ORDER.indexOf(a) - LEVEL_ORDER.indexOf(b),
+    );
     return availableLevels;
 }

@@ -1,8 +1,5 @@
 {
-  "tabWidth": 4,
-  "useTabs": false,
-  "plugins": [
-    "@homer0/prettier-plugin-jsdoc",
-    "prettier-plugin-svelte"
-  ]
+    "tabWidth": 4,
+    "useTabs": false,
+    "plugins": ["@homer0/prettier-plugin-jsdoc", "prettier-plugin-svelte"]
 }
