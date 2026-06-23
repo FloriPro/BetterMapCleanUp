@@ -2,6 +2,7 @@
     import {
         GeoJSON,
         GeolocateControl,
+        HeatmapLayer,
         Layer,
         LineLayer,
         MapLibre,
@@ -21,15 +22,29 @@
     import { SvelteURLSearchParams } from "svelte/reactivity";
     import { onMount, setContext } from "svelte";
     import RoutingInfoOverlay from "./overlays/RoutingInfoOverlay.svelte";
-    import maplibregl from "maplibre-gl";
-    import RouteOverlay from "./overlays/RouteOverlay.svelte";
     import RouteSettings from "./overlays/RouteSettings.svelte";
+    import maplibregljs from "maplibre-gl";
+    import CustomLayerOverlay from "./overlays/CustomLayerOverlay.svelte";
+    import gj from "geojson";
 
     /**
      * @type {LevelSelect | null}
      */
     let levelSelect = $state(null);
+    /**
+     * @type {CustomLayerOverlay | null}
+     */
+    let customLayerOverlay = $state(null);
 
+    /**
+     * @type {gj.GeoJSON | null}
+     */
+    let heatmapdata = $state(null);
+    // $inspect(heatmapdata, "heatmapdata");
+
+    /**
+     * @type {boolean}
+     */
     let settingsOpen = $state(false);
 
     /**
@@ -39,54 +54,6 @@
 
     function loadWcIcon() {
         map?.loadImage(apiUrls.getWCIcon());
-    }
-
-    function genLayers() {
-        if (!map) return;
-        for (let level of LEVEL_ORDER) {
-            //raster layer with url: /mapTiling/tiles/${level}/${z}/${x}/${y}.png
-            console.log("Max zoom level:", map.getMaxZoom(), "21");
-
-            map.addSource(level, {
-                type: "raster",
-                tiles: [apiUrls.getTileMap(level)],
-                tileSize: 256,
-                attribution:
-                    '<a href="https://www.lmu.de/raumfinder/" target="_blank">© Ludwig-Maximilians-Universität München</a>',
-                maxzoom: 21,
-            });
-            map.addLayer({
-                id: level,
-                type: "raster",
-                source: level,
-                layout: {
-                    visibility: "none",
-                },
-                paint: {
-                    "raster-brightness-min": 1,
-                    "raster-brightness-max": 0.15,
-                },
-            });
-
-            // add building layer, to later add buildings to
-            map.addSource(`building-source-${level}`, {
-                type: "geojson",
-                data: {
-                    type: "FeatureCollection",
-                    features: [],
-                },
-            });
-            map.addLayer({
-                id: `building-layer-${level}`,
-                type: "symbol",
-                source: `building-source-${level}`,
-                layout: {
-                    "icon-image": "wc-Icon",
-                    "icon-size": 0.5,
-                    "icon-allow-overlap": true,
-                },
-            });
-        }
     }
 
     /**
@@ -107,34 +74,6 @@
                 });
             }
         });
-    }
-
-    function updateLayers() {
-        if (!map) return;
-        for (let level of LEVEL_ORDER) {
-            if (level === levelSelect?.currentLevel) {
-                map.setLayoutProperty(level, "visibility", "visible");
-                map.setLayoutProperty(
-                    `building-layer-${level}`,
-                    "visibility",
-                    "visible",
-                );
-            } else {
-                map.setLayoutProperty(level, "visibility", "none");
-                map.setLayoutProperty(
-                    `building-layer-${level}`,
-                    "visibility",
-                    "none",
-                );
-            }
-        }
-
-        // Update route visibility based on current level
-        // if (this.showRoute) {
-        //     this.updateRouteVisibility();
-        // }
-
-        // roomInfoOverlay.updateRoomMarkerColor();
     }
 
     let reactiveZoom = $state(1);
@@ -175,14 +114,16 @@
 
     let isRouteStartPointSetting = $state(false);
     /**
-     * @type {{
-     *     start: { lat: number; lng: number; level: string };
-     *     end: { lat: number; lng: number; level: string };
-     *     room: SearchRoomResponse;
-     *     routeLength: number;
-     *     levelChanges: number;
-     *     timeEstimate: number;
-     * } | null}
+     * @type {| {
+     *           start: { lat: number; lng: number; level: string };
+     *           end: { lat: number; lng: number; level: string };
+     *           room: SearchRoomResponse;
+     *           routeLength: number;
+     *           levelChanges: number;
+     *           timeEstimate: number;
+     *       }
+     *     | null
+     *     | { error: string }}
      */
     let routeInformation = $state(null);
     /**
@@ -223,7 +164,7 @@
 
     function focusOnRoute() {
         // focus map on all route points
-        let bounds = new maplibregl.LngLatBounds();
+        let bounds = new maplibregljs.LngLatBounds();
         routePoints.forEach((segment) => {
             segment.points.forEach((p) => {
                 const lng = Number(p.lng);
@@ -360,7 +301,7 @@
     setContext("closeSettings", () => {
         settingsOpen = false;
         // recalculate route
-        if (routeInformation) {
+        if (routeInformation && !("error" in routeInformation)) {
             routeToRoom(routeInformation.room);
         }
     });
@@ -398,7 +339,7 @@
         if (selectedMarker) {
             params.set("marker", selectedMarker.type.id);
         }
-        if (routeInformation) {
+        if (routeInformation && !("error" in routeInformation)) {
             // https://raumplan.flulu.de/index.html#lat=48.150969&lng=11.580544&zoom=19.53&level=EG&room=D+Z007&building=Geschwister-Scholl-Platz+01&route=1&routeDest=D+Z007&routeBuilding=Geschwister-Scholl-Platz+01&routeStartLat=48.151018&routeStartLng=11.580716
             params.set("route", "1");
             params.set("routeDest", routeInformation.room.name);
@@ -550,7 +491,7 @@
     bind:map
     center={[11.582, 48.1351]}
     zoom={13}
-    maxZoom={25}
+    maxZoom={23.999}
     class="map"
     style="https://api.maptiler.com/maps/streets-v2-dark/style.json?key=WKfpITqH1nhqMcaWvHXD"
     onmoveend={() => {
@@ -623,6 +564,83 @@
             />
         </RasterTileSource>
     {/each}
+
+    {#if heatmapdata}
+        <GeoJSON data={heatmapdata} id="heatmap" promoteId="id">
+            <HeatmapLayer
+                id="heatmap-layer"
+                paint={{
+                    "heatmap-weight": [
+                        "interpolate",
+                        ["linear"],
+                        ["get", "count"],
+                        0,
+                        0,
+                        10,
+                        0.2,
+                        50,
+                        0.5,
+                        100,
+                        0.8,
+                        300,
+                        1,
+                    ],
+                    "heatmap-intensity": [
+                        "interpolate",
+                        ["linear"],
+                        ["zoom"],
+                        0,
+                        1,
+                        15,
+                        3,
+                    ],
+                    "heatmap-color": [
+                        "interpolate",
+                        ["linear"],
+                        ["heatmap-density"],
+                        0,
+                        "rgba(33,102,172,0)",
+                        0.2,
+                        "rgb(103,169,207)",
+                        0.4,
+                        "rgb(209,229,240)",
+                        0.6,
+                        "rgb(253,219,199)",
+                        0.8,
+                        "rgb(239,138,98)",
+                        1,
+                        "rgb(178,24,43)",
+                    ],
+                    "heatmap-radius": [
+                        "interpolate",
+                        ["exponential", 2],
+                        ["zoom"],
+                        0,
+                        1,
+                        12,
+                        1,
+                        24,
+                        3000,
+                    ],
+                    "heatmap-opacity": [
+                        "interpolate",
+                        ["linear"],
+                        ["zoom"],
+                        18,
+                        0.9,
+                        25,
+                        0.6,
+                    ],
+                    //falloff
+                }}
+                filter={[
+                    "==",
+                    ["get", "level"],
+                    levelSelect?.currentLevel || "",
+                ]}
+            />
+        </GeoJSON>
+    {/if}
 
     {#if map && reactiveZoom <= 17}
         {#each markers as marker (marker)}
@@ -857,6 +875,9 @@
         {routeInformation}
         clearRoute={routingInfoOverlay?.clearRoute}
     />
+    {#if selectedRoom == null}
+        <CustomLayerOverlay bind:this={customLayerOverlay} bind:heatmapdata />
+    {/if}
     <SearchOverlay
         bind:this={searchOverlay}
         {map}
@@ -879,6 +900,12 @@
     ) => {
         routePoints = a;
         console.log("Setting route points:", a);
+    }}
+    setRouteError={(/** @type {string} */ message) => {
+        routeInformation = {
+            error: message,
+        };
+        routePoints = [];
     }}
     setrouteinformation={(
         /** @type {{start: {lat: number, lng: number, level: string}, end: {lat: number, lng: number, level: string}, room: SearchRoomResponse, routeLength: number, levelChanges: number, timeEstimate: number} | null}*/ a,

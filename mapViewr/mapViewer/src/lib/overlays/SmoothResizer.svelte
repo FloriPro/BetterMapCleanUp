@@ -40,7 +40,7 @@
 		let from = oldFrom || getHeightWithMargin(container);
 		const targetHeight = open ? getHeightWithMargin(inner) : 0;
 
-		console.log('Animating from', from, 'to', targetHeight, '(old from:', oldFrom, ')');
+		// console.log('Animating from', from, 'to', targetHeight, '(old from:', oldFrom, ')');
 
 		oldFrom = null;
 

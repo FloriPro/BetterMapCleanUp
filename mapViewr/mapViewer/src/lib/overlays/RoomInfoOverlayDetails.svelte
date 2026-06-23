@@ -27,19 +27,19 @@
                                 {/each}
                             </tbody>
                         </table>
+                        <hr />
+                        <a
+                            class="lsf-button"
+                            href="https://lsf.verwaltung.uni-muenchen.de/qisserver/rds?state=verpublish&status=init&vmfile=no&moduleCall=webInfo&publishConfFile=webInfoRaum&publishSubDir=raum&keep=y&raum.rgid={detailedRoom?.roomid}"
+                            target="_blank"
+                        >
+                            Open in LSF
+                        </a>
                     {:else}
                         <div class="room-not-found">
                             Detailed room information not available.
                         </div>
                     {/if}
-                    <hr />
-                    <a
-                        class="lsf-button"
-                        href="https://lsf.verwaltung.uni-muenchen.de/qisserver/rds?state=verpublish&status=init&vmfile=no&moduleCall=webInfo&publishConfFile=webInfoRaum&publishSubDir=raum&keep=y&raum.rgid={detailedRoom?.roomid}"
-                        target="_blank"
-                    >
-                        Open in LSF
-                    </a>
                 </div>
             {/await}
         </div>

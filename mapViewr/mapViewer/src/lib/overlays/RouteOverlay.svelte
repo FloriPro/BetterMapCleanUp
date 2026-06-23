@@ -4,18 +4,22 @@
     import Controlls from "./Controlls.svelte";
     import SmoothResizer from "./SmoothResizer.svelte";
     import RouteSettings from "./RouteSettings.svelte";
+
     let large = $state(true);
     /**
      * @type {{
      *     canBeLarge: boolean;
-     *     routeInformation: {
-     *         start: { lat: number; lng: number };
-     *         end: { lat: number; lng: number };
-     *         room: SearchRoomResponse;
-     *         routeLength: number;
-     *         levelChanges: number;
-     *         timeEstimate: number;
-     *     } | null;
+     *     routeInformation:
+     *         | {
+     *               start: { lat: number; lng: number };
+     *               end: { lat: number; lng: number };
+     *               room: SearchRoomResponse;
+     *               routeLength: number;
+     *               levelChanges: number;
+     *               timeEstimate: number;
+     *           }
+     *         | null
+     *         | { error: string };
      *     clearRoute?: () => void;
      * }}
      */
@@ -56,7 +60,7 @@
     // }
 
     let timeString = $derived.by(() => {
-        if (!routeInformation) return "";
+        if (!routeInformation || "error" in routeInformation) return "";
         const totalSeconds = Math.round(routeInformation.timeEstimate);
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
@@ -112,14 +116,15 @@
     /** @type {string} */ icon,
     /** @type {string} */ text,
     /** @type {string}*/ value,
+    /** @type {Boolean}*/ big = false,
 )}
-    <div class="route-info-item">
+    <div class="route-info-item" class:big>
         <span class="route-info-icon">{icon}</span>
         <span>{text}: <span class="route-level-indicator">{value}</span></span>
     </div>
 {/snippet}
 
-{#if routeInformation}
+{#if routeInformation && !("error" in routeInformation)}
     <div id="room-info-container">
         <div class="route-info-header" class:has-bottom-border={actualLarge}>
             <div>
@@ -211,6 +216,58 @@
             </div>
         </SmoothResizer>
     </div>
+{:else if routeInformation && "error" in routeInformation}
+    <div id="room-info-container">
+        <div class="route-info-header" class:has-bottom-border={actualLarge}>
+            <div>
+                <div class="route-info-title">Error routing!</div>
+            </div>
+            <Controlls
+                actions={[
+                    // {
+                    //     title: "Small / large",
+                    //     icon: large ? "↓" : "↑",
+                    //     onClick: () => {
+                    //         large = !large;
+                    //     },
+                    //     class: "expand-btn",
+                    // },
+                    {
+                        // label: 'Close',
+                        title: "Close",
+                        icon: "✕",
+                        onClick: () => {
+                            console.log("clear route", clearRoute);
+                            clearRoute?.();
+                        },
+                        class: "close-btn",
+                    },
+                ]}
+            />
+        </div>
+        <SmoothResizer
+            expanded={actualLarge}
+            duration={220}
+            class="smooth-resizer-container"
+        >
+            <div class="route-info">
+                {@render routeInfoPart(
+                    "🚫",
+                    "error",
+                    routeInformation.error,
+                    true,
+                )}
+            </div>
+            <div class="route-action-buttons">
+                {@render routeButton("📍", "Set Start Point", () => {
+                    setStartPoint();
+                })}
+                {@render routeButton("⚙️", "Open Settings", () => {
+                    openSettings();
+                })}
+            </div>
+        </SmoothResizer>
+    </div>
 {/if}
 
 <style>
@@ -258,6 +315,9 @@
         color: #4fa8d8;
         margin-left: 4px;
     }
+    .big .route-level-indicator {
+        font-size: 16px;
+    }
     .route-info-item {
         display: flex;
         align-items: center;
@@ -265,6 +325,9 @@
         color: rgba(255, 255, 255, 0.8);
         padding-right: 12px;
         border-right: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .route-info-item.big {
+        font-size: 16px;
     }
     .route-info-icon {
         margin-right: 8px;

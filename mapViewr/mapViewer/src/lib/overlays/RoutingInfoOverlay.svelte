@@ -15,9 +15,10 @@
      *         routeLength: number;
      *         levelChanges: number;
      *         timeEstimate: number;
-     *     } | null;
+     *     } | null | {error:string};
      *     setrouteinformation: Function;
      *     setroutePoints: Function;
+     *     setRouteError: Function;
      *     routePoints: {
      *         level: string;
      *         points: import("$lib/api/datatype").LatLng[];
@@ -32,6 +33,7 @@
         isRouteStartPointSetting,
         routeInformation,
         setrouteinformation,
+        setRouteError,
         routePoints,
         setroutePoints,
         map,
@@ -256,7 +258,8 @@
          * @type {any}
          */ error) {
             console.error("Error routing to room:", error);
-            alert("Error calculating route: " + error.message);
+            // alert("Error calculating route: " + error.message);
+            setRouteError(error.message)
         } finally {
             routeLoading = false;
         }

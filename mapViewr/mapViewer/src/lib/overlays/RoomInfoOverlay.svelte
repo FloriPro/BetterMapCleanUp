@@ -20,7 +20,7 @@
      *         routeLength: number;
      *         levelChanges: number;
      *         timeEstimate: number;
-     *     } | null;
+     *     } | null | {error:string};
      *     clearRoute?: () => void;
      * }} }
      */
@@ -287,7 +287,7 @@
         box-shadow:
             0 -4px 20px rgba(0, 0, 0, 0.3),
             0 -2px 10px rgba(0, 0, 0, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            inset 0 0px 0 rgba(255, 255, 255, 0.1);
         overflow: hidden;
     }
     .room-info-header {
