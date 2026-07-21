@@ -1,6 +1,64 @@
 import random
 
 
+def delete_extra_files(bucket_name, prefix, local_files, source_directory):
+    """
+    Delete blobs from the bucket under `prefix` that are not present in `local_files`.
+
+    Args:
+        bucket_name: GCS bucket name.
+        prefix: The cloud prefix (e.g., "tilesLQ/").
+        local_files: List of local file paths relative to source_directory.
+        source_directory: The local root directory (used only for relative path logic).
+    """
+    from google.cloud.storage import Client
+
+    storage_client = Client()
+    bucket = storage_client.bucket(bucket_name)
+
+    # Build a set of local relative paths for fast lookup
+    # We need the local relative paths as they would appear in the cloud blob name.
+    # Since your upload adds a prefix, the cloud blob name = prefix + local_relative_path
+    local_set = set(local_files)  # local_files already relative to source_directory
+
+    # List all blobs under the prefix
+    print(f"Listing blobs under '{prefix}'...")
+    blobs = list(bucket.list_blobs(prefix=prefix))
+    print(f"Found {len(blobs)} blobs in the cloud.")
+
+    # Find blobs that are not in local_set
+    extra_blobs = []
+    for blob in blobs:
+        # Remove the prefix to get the relative path
+        # blob.name starts with "tilesLQ/", so we strip it
+        if not blob.name.startswith(prefix):
+            continue
+        relative_name = blob.name[len(prefix) :]
+        if relative_name not in local_set:
+            extra_blobs.append(blob)
+
+    if not extra_blobs:
+        print("No extra files to delete.")
+        return
+
+    for x in range(min(10, len(extra_blobs))):
+        print("{}".format(random.choice(extra_blobs)))
+
+    input("Press Enter to continue...")
+
+    print(f"Deleting {len(extra_blobs)} extra files...")
+
+    # Delete in batches of 100 (GCS API limit for batch deletion)
+    batch_size = 100
+    for i in range(0, len(extra_blobs), batch_size):
+        batch = extra_blobs[i : i + batch_size]
+        # delete_blobs returns a list of errors
+        bucket.delete_blobs(batch)
+        print("deleted", len(batch), "remaining:", len(extra_blobs) - (i + batch_size))
+
+    print("Cleanup complete.")
+
+
 def upload_directory_with_transfer_manager(
     bucket_name, source_directory, prefix, workers=8
 ):
@@ -30,6 +88,7 @@ def upload_directory_with_transfer_manager(
     from pathlib import Path
 
     from google.cloud.storage import Client, transfer_manager
+
     print("Connecting to Google Cloud Storage...")
     storage_client = Client()
     bucket = storage_client.bucket(bucket_name)
@@ -67,14 +126,14 @@ def upload_directory_with_transfer_manager(
     input("Press Enter to continue...")
 
     # Start the upload.
-    for i,batch in enumerate(batches):
+    for i, batch in enumerate(batches):
         results = transfer_manager.upload_many_from_filenames(
             bucket,
             batch,
             source_directory=source_directory,
             max_workers=workers,
             blob_name_prefix=prefix,
-            skip_if_exists=False
+            skip_if_exists=False,
         )
 
         for name, result in zip(batch, results):
@@ -87,14 +146,32 @@ def upload_directory_with_transfer_manager(
                 if result is not None:
                     print("Failed to upload {} with error: {}".format(name, result))
                 print("Uploaded {} to {}.".format(name, bucket.name))
-        print(
-            "Batch {} of {} complete.".format(i + 1, len(batches))
-        )
+        print("Batch {} of {} complete.".format(i + 1, len(batches)))
     print("Upload complete.")
 
-# upload all files from tilesLQ/ to tilesLQ/
+
 if __name__ == "__main__":
-    # upload_directory_with_transfer_manager("your-bucket-name", "tilesLQ/")
+    # You can pass the same arguments as before
+    bucket_name = "raumplan.flulu.de"
+    source_directory = "tiles/"
+    prefix = "tilesLQ/"
+    workers = 20
+
+    # 1) Build the local file list (same as in upload function)
+    from pathlib import Path
+
+    paths = Path(source_directory).rglob("*")
+    file_paths = [path for path in paths if path.is_file()]
+    relative_paths = [
+        path.relative_to(source_directory).as_posix() for path in file_paths
+    ]
+    local_files = [str(path) for path in relative_paths]
+    print(f"Found {len(local_files)} local files.")
+
+    # 2) Upload
     upload_directory_with_transfer_manager(
-        "raumplan.flulu.de", "tiles/", workers=20, prefix="tilesLQ/"
+        bucket_name, source_directory, prefix, workers
     )
+
+    # 3) Delete extra files
+    delete_extra_files(bucket_name, prefix, local_files, source_directory)

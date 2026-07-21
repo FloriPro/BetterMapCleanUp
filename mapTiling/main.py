@@ -1,4 +1,3 @@
-import enum
 import gc
 import shutil
 import threading
@@ -10,8 +9,6 @@ import math
 import json
 import os
 import numpy
-from sympy import zoo
-from ulid import T
 import functools
 
 with open("../data/app_data.json", "r") as f:
@@ -21,6 +18,8 @@ TILE_DOWN_SCALE = 2
 TILE_SIZE = 256 * 2 * TILE_DOWN_SCALE
 MULTITHREAD = True
 DEBUG = False
+FAST = False
+
 
 hiddenBuildings = [
     "bw0040",
@@ -198,6 +197,19 @@ class MapTiling:
             raise TypeError("image must be an instance of MapImage")
         self.images.append(image)
 
+    def isUniform(self, image: PILImage.Image):
+        colors = image.getcolors(maxcolors=2)
+        if colors == None:
+            return False
+        return len(colors) == 1
+
+    def tileEmpty(self, image: PILImage.Image):
+        alphachannel = image.getchannel("A")
+        min_alpha, max_alpha = alphachannel.getextrema()
+        if max_alpha == 0:
+            return True
+        return False
+
     def makeX(self, x, tiles, zoom: int):
         createFolder(f"tiles/{self.tilePrefix}/{zoom}/{x}")
         #    for y in range(tilesMinY, tilesMaxY + 1):
@@ -295,7 +307,7 @@ class MapTiling:
 
                     tile.paste(warped_img, (offsetx, offsety), warped_img)
 
-            if hasImage:
+            if hasImage and not self.tileEmpty(tile):
                 if DEBUG:
                     # add background rectangle for text
                     draw = ImageDraw.Draw(tile)
@@ -323,11 +335,14 @@ class MapTiling:
 
                 # tile.save(f"tiles/{self.tilePrefix}/{zoom}/{x}/{y}.png")
                 # downscale tile by TILE_DOWN_SCALE
+                downscaleSize = (
+                    tile.width // TILE_DOWN_SCALE,
+                    tile.height // TILE_DOWN_SCALE,
+                )
+                if self.isUniform(tile):
+                    downscaleSize = (1, 1)
                 downscaled = tile.resize(
-                    (
-                        tile.width // TILE_DOWN_SCALE,
-                        tile.height // TILE_DOWN_SCALE,
-                    ),
+                    downscaleSize,
                     resample=PILImage.LANCZOS,
                 )
                 downscaled.save(
@@ -436,7 +451,7 @@ def planTiler(minZoom, maxZoom):
         if DEBUG:
             print(f"Building {buildingId} has parts on levels: {hasLevels}")
 
-        if len(hasLevels) < len(levels.keys()):
+        if len(hasLevels) < len(levels.keys()) and not FAST:
             # take the eg level of this building
             eg = filter(lambda x: x[1]["level"] == "EG", building["parts"].items())
             eg = list(eg)
@@ -452,7 +467,7 @@ def planTiler(minZoom, maxZoom):
                         f"Building {buildingId} has no levels, skipping ({hasLevels})"
                     )
                     continue
-            (egpartid, eg) = eg[0]
+            egpartid, eg = eg[0]
             print("using default level EG for building", eg["level"], buildingId)
 
             egImg = PILImage.open(f"../data/{buildingId}/clear/{egpartid}.png").convert(
