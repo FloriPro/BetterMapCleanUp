@@ -110,6 +110,18 @@ export const LEVEL_SHORT = {
  *                              marker type.
  */
 export const availableMapMarkerTypes = [
-    { id: "WC-H", icon: "🚹", name: "Toilette Herren", selector: "wc-h" },
-    { id: "WC-D", icon: "🚺", name: "Toilette Damen", selector: "wc-d" },
+    {
+        id: "WC-H",
+        icon: "🚹",
+        name: "Toilette Herren",
+        selector: "wc-h",
+        aliases: ["männer", "männer klo", "klo männer"],
+    },
+    {
+        id: "WC-D",
+        icon: "🚺",
+        name: "Toilette Damen",
+        selector: "wc-d",
+        aliases: ["frauen", "frauen klo", "klo frauen"],
+    },
 ];

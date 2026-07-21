@@ -666,11 +666,17 @@
                 zIndex={1000}
             >
                 <div
-                    class="selected-room-marker"
+                    class="marker-container"
                     class:notThisLevel={selectedRoom.level !==
                         levelSelect?.currentLevel}
                 >
-                    {selectedRoom.name}
+                    <div class="marker-pulse"></div>
+                    <div class="selected-room-marker">
+                        <svg class="marker-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                        </svg>
+                        <span class="marker-text">{selectedRoom.name}</span>
+                    </div>
                 </div>
             </Marker>
         {/if}
@@ -690,7 +696,12 @@
                                     selectRoom(makerRoom);
                                 }}
                             >
-                                <div class="selected-room-marker">&#8203;</div>
+                                <div class="marker-container is-type-marker">
+                                    <div class="marker-pulse"></div>
+                                    <div class="selected-room-marker is-type-marker">
+                                        <span class="marker-icon">{selectedMarker.type.icon}</span>
+                                    </div>
+                                </div>
                             </Marker>
                         {/if}
                     {/await}
@@ -927,34 +938,118 @@
         width: 100%;
     }
 
+    /* Selected room marker container */
+    .marker-container {
+        position: relative;
+        width: 0;
+        height: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Small static dot core instead of pulsing ripple */
+    .marker-pulse {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background-color: #0d9488;
+        border: 1px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        transform: translate(-50%, -50%);
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* Type-specific static dot core */
+    .marker-container.is-type-marker .marker-pulse {
+        background-color: #2563eb;
+    }
+
+    /* Inactive level static dot core */
+    .marker-container.notThisLevel .marker-pulse {
+        background-color: #94a3b8;
+        border-color: #cbd5e1;
+    }
+
+    /* Main selected room tooltip styling - optimized and simplified */
     .selected-room-marker {
-        background-color: rgb(9, 99, 83);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 14px;
-        font-weight: bold;
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #0d9488;
+        color: #ffffff;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
         text-align: center;
         white-space: nowrap;
-        transform: translate(0, calc(-100% + 10px));
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        pointer-events: auto;
+        z-index: 2;
     }
 
     .selected-room-marker::after {
         content: "";
         position: absolute;
-        bottom: -11px;
+        bottom: -5px;
         left: 50%;
         transform: translateX(-50%);
-        border-width: 6px;
+        border-width: 5px 5px 0;
         border-style: solid;
-        border-color: rgb(9, 99, 83) transparent transparent transparent;
+        border-color: #0d9488 transparent transparent transparent;
     }
 
-    .selected-room-marker.notThisLevel {
-        background-color: rgba(9, 99, 83, 0.5);
+    /* Style for searched category markers (e.g. WC, round icon) */
+    .selected-room-marker.is-type-marker {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 15px;
+        background-color: #2563eb;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     }
-    .selected-room-marker.notThisLevel::after {
-        border-color: rgba(9, 99, 83, 0.5) transparent transparent transparent;
+
+    .selected-room-marker.is-type-marker::after {
+        border-color: #2563eb transparent transparent transparent;
+    }
+
+    /* Inactive level styling */
+    .marker-container.notThisLevel .selected-room-marker {
+        background-color: #64748b;
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        opacity: 0.7;
+    }
+
+    .marker-container.notThisLevel .selected-room-marker::after {
+        border-color: #64748b transparent transparent transparent;
+    }
+
+    /* Icon styling inside tooltip */
+    .marker-icon-svg {
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+        color: #fbbf24; /* Amber/gold */
+    }
+
+    .marker-text {
+        font-family: inherit;
     }
 
     /* Level change marker (icon above label) */
